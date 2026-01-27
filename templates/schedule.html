@@ -1,0 +1,678 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Generated Schedule</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='schedule.css') }}">
+
+    <style>
+/* Week Info Banner */
+.week-info-banner {
+    background: linear-gradient(135deg, #6264a7 0%, #4a4c7e 100%);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+.week-info-content {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.week-icon {
+    font-size: 2em;
+}
+
+.week-info-banner h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.3em;
+    font-weight: 600;
+}
+
+.week-info-banner p {
+    margin: 5px 0 0 0;
+    color: #e8e7ff;
+    font-size: 0.95em;
+}
+
+/* Loading Button States */
+.btn-loading {
+    display: none;
+    align-items: center;
+    gap: 8px;
+}
+
+button.loading .btn-text {
+    display: none;
+}
+
+button.loading .btn-loading {
+    display: inline-flex;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Spinner Animation */
+.spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Notification Popup */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px 24px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    min-width: 300px;
+    max-width: 500px;
+    display: none;
+    animation: slideIn 0.3s ease-out;
+}
+
+.notification.show {
+    display: block;
+}
+
+.notification.success {
+    border-left: 4px solid #4CAF50;
+}
+
+.notification.error {
+    border-left: 4px solid #f44336;
+}
+
+.notification-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.notification-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.notification-text {
+    flex: 1;
+}
+
+.notification-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: #292828;
+}
+
+.notification-message {
+    font-size: 14px;
+    color: #666;
+    line-height: 1.4;
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #999;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.notification-close:hover {
+    color: #333;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(400px);
+        opacity: 0;
+    }
+}
+
+.notification.hiding {
+    animation: slideOut 0.3s ease-out forwards;
+}
+    </style>
+</head>
+<body>
+<!-- Notification Container -->
+<div id="notification" class="notification">
+    <div class="notification-content">
+        <span class="notification-icon" id="notification-icon"></span>
+        <div class="notification-text">
+            <div class="notification-title" id="notification-title"></div>
+            <div class="notification-message" id="notification-message"></div>
+        </div>
+        <button class="notification-close" onclick="hideNotification()">×</button>
+    </div>
+</div>
+
+<div class="teams-shell">
+    <div class="teams-header">
+        <div class="teams-header-title">
+            <div class="teams-header-pill">SS</div>
+            <span>Student Scheduling</span>
+        </div>
+        <div class="teams-header-sub">
+            Marist University
+        </div>
+    </div>
+
+    <div class="page-body">
+        <div class="container">
+            <a href="{{ url_for('upload_file') }}" class="back-button">
+                <span class="icon">←</span>
+                <span>New Schedule</span>
+            </a>
+
+            {% if error %}
+                <div class="card error-card">
+                    <div class="card-inner">
+                        <h1>Scheduling Error</h1>
+                        <div class="error">
+                            <p><strong>Something went wrong while generating the schedule.</strong></p>
+                            <p>{{ error }}</p>
+                            <p style="margin-top:6px; font-size:0.85rem;">
+                                Verify your Excel file layout (student names, day columns, and availability format) and try again.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <h1>
+                    Generated Optimal Schedule
+                    <span class="sub">Balanced coverage &amp; fairness</span>
+                </h1>
+                 <!-- === TEAMS ACTION BUTTONS === -->
+                <div class="card" style="margin-top: 16px;">
+                    <div class="card-inner" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                        
+                        <form action="/publish-to-teams" method="post">
+                            <button type="submit" class="primary-btn">
+                                Publish Schedule to Microsoft Teams
+                            </button>
+                        </form>
+
+                        <form action="/reset-teams-schedule" method="post">
+                            <button
+                                type="submit"
+                                class="danger-btn"
+                                onclick="return confirm('Are you sure you want to delete this week’s Teams shifts?')">
+                                Reset Teams Schedule (This Week)
+                            </button>
+                        </form>
+
+                    </div>
+                </div>
+
+                <!-- === VISUAL SCHEDULE CARD (Tabs: Matrix / By Shift) === -->
+                <div class="card">
+                    <div class="card-inner">
+                        <div class="card-header-row">
+                            <div>
+                                <div class="eyebrow">Visual Schedule</div>
+                                <h2>Matrix &amp; Shift Overview</h2>
+                            </div>
+                            <div class="tab-strip">
+                                <button class="tab active" data-view="grid-view">Matrix view</button>
+                                <button class="tab" data-view="shift-view">By shift</button>
+                            </div>
+                        </div>
+
+                        <p class="card-description">
+                            See which students are assigned to each shift slot, then switch to “By shift” for
+                            a grouped view by day.
+                        </p>
+
+                        <div class="view-wrapper">
+                            <!-- Matrix View -->
+                            <div id="grid-view" class="view active">
+                                <div class="grid-legend">
+                                    <span>Legend:</span>
+                                    <div class="legend-chip">
+                                        <span class="legend-dot"></span> <span>Assigned</span>
+                                    </div>
+                                    <div class="legend-chip">
+                                        <span class="legend-dot unassigned"></span> <span>Available / Unassigned</span>
+                                    </div>
+                                    <span class="legend-note">(Rows = Students, Columns = Shift Day/Time)</span>
+                                </div>
+                                <div class="grid-wrapper">
+                                    <table id="schedule-grid-table"></table>
+                                </div>
+                            </div>
+
+                            <!-- By Shift View (sleek grouped table) -->
+                            <div id="shift-view" class="view">
+                                <div class="shift-byshift-wrapper">
+                                    <table class="shift-byshift-table">
+                                        <thead>
+                                        <tr>
+                                            <th class="col-time">Shift</th>
+                                            <th class="col-coverage">Coverage</th>
+                                            <th class="col-people">Assigned</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% set ns = namespace(last_day='') %}
+                                        {% for item in schedule %}
+                                            {# Split "Mon 7.25-9.00" into day + times using Python string method #}
+                                            {% set parts = item.shift.split(' ') %}
+                                            {% set day = parts[0] %}
+                                            {% if parts|length > 1 %}
+                                                {% set times = parts[1] %}
+                                            {% else %}
+                                                {% set times = '' %}
+                                            {% endif %}
+
+                                            {# Day header row whenever day changes #}
+                                            {% if ns.last_day != day %}
+                                                <tr class="shift-day-row">
+                                                    <td colspan="3">
+                                                        <span class="shift-day-label-strong">{{ day }}</span>
+                                                    </td>
+                                                </tr>
+                                                {% set ns.last_day = day %}
+                                            {% endif %}
+
+                                            {# Coverage % for bar #}
+                                            {% set fill = 0 %}
+                                            {% if item.required > 0 %}
+                                                {% if item.assigned_count <= item.required %}
+                                                    {% set fill = item.assigned_count / item.required * 100 %}
+                                                {% else %}
+                                                    {% set fill = 100 %}
+                                                {% endif %}
+                                            {% endif %}
+
+                                            {% set understaffed = item.assigned_count < item.required %}
+
+                                            <tr class="shift-row{% if understaffed %} shift-row-understaffed{% endif %}">
+                                                <td class="cell-time">
+                                                    <div class="time-main">{{ times }}</div>
+                                                </td>
+                                                <td class="cell-coverage">
+                                                    <div class="coverage-line">
+                                                        <span class="coverage-numbers">
+                                                            {{ item.assigned_count }}/{{ item.required }}
+                                                            <span class="coverage-label">staff</span>
+                                                        </span>
+                                                        <div class="coverage-bar-shell">
+                                                            <div class="coverage-bar" style="width: {{ fill|round(0) }}%;"></div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="cell-people">
+                                                    {% if item.assigned_students == "UNSTAFFED" %}
+                                                        <span class="people-text people-unstaffed">Unstaffed</span>
+                                                    {% else %}
+                                                        <span class="people-text">
+                                                            {{ item.assigned_students }}
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- === SHIFT ASSIGNMENT SUMMARY (Tabular) === -->
+                <div class="card shift-table">
+                    <div class="card-inner">
+                        <div class="eyebrow">Summary</div>
+                        <h2>Shift Assignments (Tabular)</h2>
+                        <table>
+                            <thead>
+                            <tr>
+                                <th>Shift</th>
+                                <th>Required Staff</th>
+                                <th>Assigned Staff</th>
+                                <th>Assignment</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for item in schedule %}
+                                <tr {% if item.assigned_count < item.required %}class="unstaffed"{% endif %}>
+                                    <td>{{ item.shift }}</td>
+                                    <td>{{ item.required }}</td>
+                                    <td>{{ item.assigned_count }}</td>
+                                    <td>{{ item.assigned_students }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- === FAIRNESS RESULT === -->
+                <div class="card">
+                    <div class="card-inner">
+                        <div class="card-header-row fairness-header">
+                            <div>
+                                <div class="eyebrow">Fairness</div>
+                                <h2>Total Student Hours</h2>
+                            </div>
+                            <div class="meta-pill">
+                                Max weekly cap:
+                                <span>20 hrs</span>
+                            </div>
+                        </div>
+
+                        <div class="fairness-wrapper">
+                            <table class="fairness-table">
+                                <thead>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th class="fairness-bar-cell">Load vs 20 hrs</th>
+                                    <th>Hours</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for student, hours in student_hours.items() %}
+                                    {% if hours <= 20 %}
+                                        {% set pct = hours / 20 * 100 %}
+                                    {% else %}
+                                        {% set pct = 100 %}
+                                    {% endif %}
+                                    <tr class="fairness-row">
+                                        <td>{{ student }}</td>
+                                        <td class="fairness-bar-cell">
+                                            <div class="fairness-bar-shell">
+                                                <div class="fairness-bar" style="width: {{ pct|round(0) }}%;"></div>
+                                            </div>
+                                        </td>
+                                        <td>{{ "%.2f"|format(hours) }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+
+                            <p class="fairness-note">
+                                Each student’s bar shows how close they are to the weekly hour limit. The solver first
+                                maximizes overall coverage, then minimizes the gap between the most- and least-scheduled
+                                students for a more equitable load.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Notification System
+    function showNotification(title, message, type = 'success') {
+        const notification = document.getElementById('notification');
+        const icon = document.getElementById('notification-icon');
+        const titleEl = document.getElementById('notification-title');
+        const messageEl = document.getElementById('notification-message');
+
+        // Set content
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        
+        // Set icon
+        icon.textContent = type === 'success' ? '✅' : '❌';
+        
+        // Set type
+        notification.className = 'notification show ' + type;
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            hideNotification();
+        }, 5000);
+    }
+
+    function hideNotification() {
+        const notification = document.getElementById('notification');
+        notification.classList.add('hiding');
+        setTimeout(() => {
+            notification.classList.remove('show', 'hiding', 'success', 'error');
+        }, 300);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // ---- Visual Grid Rendering ----
+        const visualGridData = {{ visual_grid_data | tojson | safe }};
+        if (visualGridData) {
+            const table = document.getElementById('schedule-grid-table');
+            const students = visualGridData.students;
+            const shiftKeys = visualGridData.shift_keys;
+            const assignments = visualGridData.assignments;
+
+            function formatShiftTime(shiftKey) {
+                const parts = shiftKey.split(' ');
+                const day = parts[0];
+                const timeRange = parts[1];
+                const floats = timeRange.split('-').map(parseFloat);
+
+                function floatToTime(fh) {
+                    const hours = Math.floor(fh);
+                    const minutes = Math.round((fh - hours) * 60);
+                    const paddedMinutes = String(minutes).padStart(2, '0');
+                    return hours + ':' + paddedMinutes;
+                }
+
+                return day + ' ' + floatToTime(floats[0]) + ' - ' + floatToTime(floats[1]);
+            }
+
+            // Header
+            const thead = table.createTHead();
+            const headerRow = thead.insertRow();
+
+            const emptyCell = document.createElement('th');
+            emptyCell.textContent = 'Student / Shift';
+            headerRow.appendChild(emptyCell);
+
+            shiftKeys.forEach(function (key) {
+                const th = document.createElement('th');
+                th.textContent = formatShiftTime(key);
+                headerRow.appendChild(th);
+            });
+
+            // Body
+            const tbody = table.createTBody();
+            let cellAnimationIndex = 0;
+
+            students.forEach(function (student) {
+                const row = tbody.insertRow();
+                const studentCell = row.insertCell();
+                studentCell.textContent = student;
+
+                shiftKeys.forEach(function (shiftKey) {
+                    const assignmentCell = row.insertCell();
+                    const isAssigned = assignments[student][shiftKey];
+
+                    if (isAssigned === 1) {
+                        assignmentCell.classList.add('assigned');
+                        assignmentCell.title = student + ' assigned to ' + formatShiftTime(shiftKey);
+
+                        const dot = document.createElement('div');
+                        dot.className = 'assigned-dot';
+                        assignmentCell.appendChild(dot);
+
+                        assignmentCell.classList.add('cell-animate-in');
+                        assignmentCell.style.animationDelay = (cellAnimationIndex * 0.01) + 's';
+                        cellAnimationIndex += 1;
+                    } else {
+                        assignmentCell.title = student + ' is available but not assigned.';
+                    }
+                });
+            });
+        }
+
+        // ---- Tabs ----
+        const tabs = document.querySelectorAll('.tab');
+        const views = {
+            'grid-view': document.getElementById('grid-view'),
+            'shift-view': document.getElementById('shift-view')
+        };
+
+        tabs.forEach(function (tab) {
+            tab.addEventListener('click', function () {
+                const target = tab.getAttribute('data-view');
+
+                tabs.forEach(function (t) {
+                    t.classList.remove('active');
+                });
+                tab.classList.add('active');
+
+                Object.keys(views).forEach(function (key) {
+                    views[key].classList.toggle('active', key === target);
+                });
+            });
+        });
+
+        // Animate coverage bars in By-shift view
+        const coverageBars = document.querySelectorAll('.coverage-bar');
+        coverageBars.forEach(function (bar) {
+            const width = bar.style.width;
+            bar.style.width = '0';
+            void bar.offsetWidth; // reflow
+            bar.style.width = width;
+        });
+
+        // ---- Button loading states with AJAX ----
+        const publishForm = document.getElementById('publish-form');
+        const resetForm = document.getElementById('reset-form');
+        const publishBtn = document.getElementById('publish-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        if (publishForm && publishBtn) {
+            publishForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                console.log('Publish button clicked - showing loading state');
+                
+                // Show loading state
+                publishBtn.classList.add('loading');
+                publishBtn.disabled = true;
+                if (resetBtn) resetBtn.disabled = true;
+
+                console.log('Button classes:', publishBtn.className);
+                console.log('Button disabled:', publishBtn.disabled);
+
+                // Make AJAX request
+                fetch('/publish-to-teams', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Publish response:', data);
+                    
+                    if (data.success) {
+                        showNotification('Published!', data.message, 'success');
+                    } else {
+                        showNotification('Error', data.message, 'error');
+                    }
+                    
+                    // Remove loading state
+                    publishBtn.classList.remove('loading');
+                    publishBtn.disabled = false;
+                    if (resetBtn) resetBtn.disabled = false;
+                })
+                .catch(error => {
+                    console.error('Publish error:', error);
+                    showNotification('Error', 'Failed to publish schedule: ' + error, 'error');
+                    
+                    // Remove loading state
+                    publishBtn.classList.remove('loading');
+                    publishBtn.disabled = false;
+                    if (resetBtn) resetBtn.disabled = false;
+                });
+            });
+        }
+
+        if (resetForm && resetBtn) {
+            resetForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                if (!confirm('Are you sure you want to delete all shifts for this week?')) {
+                    return false;
+                }
+                
+                // Show loading state
+                resetBtn.classList.add('loading');
+                resetBtn.disabled = true;
+                if (publishBtn) publishBtn.disabled = true;
+
+                // Make AJAX request
+                fetch('/reset-teams-schedule', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNotification('Schedule Reset', data.message, 'success');
+                    } else {
+                        showNotification('Error', data.message, 'error');
+                    }
+                    
+                    // Remove loading state
+                    resetBtn.classList.remove('loading');
+                    resetBtn.disabled = false;
+                    if (publishBtn) publishBtn.disabled = false;
+                })
+                .catch(error => {
+                    showNotification('Error', 'Failed to reset schedule: ' + error, 'error');
+                    
+                    // Remove loading state
+                    resetBtn.classList.remove('loading');
+                    resetBtn.disabled = false;
+                    if (publishBtn) publishBtn.disabled = false;
+                });
+            });
+        }
+    });
+</script>
+</body>
+</html>

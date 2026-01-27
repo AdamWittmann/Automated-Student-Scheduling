@@ -1,0 +1,127 @@
+<!doctype html>
+<title>Staff Scheduler App</title>
+<style>
+    /* Teams-like Dark Theme */
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #201f1f; /* Dark background */
+        color: #f3f2f1; /* Light text */
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+    }
+
+    .app-card {
+        background-color: #292828; /* Slightly lighter card background */
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        width: 100%;
+        max-width: 500px;
+        text-align: center;
+        margin-top: 10vh;
+    }
+
+    h1 {
+        color: #f3f2f1;
+        font-size: 1.8em;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #3c3c3c;
+        padding-bottom: 10px;
+    }
+
+    .week-selector {
+        margin: 20px 0;
+        padding: 20px;
+        background: #3c3c3c;
+        border-radius: 6px;
+        text-align: left;
+    }
+
+    .week-selector label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #f3f2f1;
+        font-size: 0.95em;
+    }
+
+    .week-selector select {
+        width: 100%;
+        padding: 12px;
+        font-size: 15px;
+        border: 1px solid #4a4a4a;
+        border-radius: 4px;
+        background-color: #292828;
+        color: #f3f2f1;
+        cursor: pointer;
+    }
+
+    .week-selector select:focus {
+        outline: none;
+        border-color: #6264a7;
+    }
+
+    /* Teams-style Button */
+    input[type="submit"] {
+        background-color: #6264a7; /* Teams Purple */
+        color: #ffffff;
+        border: none;
+        padding: 12px 20px;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 1em;
+        font-weight: 600;
+        transition: background-color 0.2s;
+        margin-top: 20px;
+        width: 100%;
+    }
+
+    input[type="submit"]:hover {
+        background-color: #4a4c7e;
+    }
+
+    /* Teams-style File Input */
+    input[type="file"] {
+        color: #f3f2f1;
+        background-color: #3c3c3c;
+        border: 1px solid #4a4a4a;
+        padding: 10px;
+        border-radius: 3px;
+        width: calc(100% - 22px);
+        cursor: pointer;
+    }
+
+    .info-text {
+        font-size: 0.9em;
+        color: #c8c6c4;
+        margin-bottom: 15px;
+        line-height: 1.4;
+    }
+
+</style>
+<div class="app-card">
+    <h1>Staff Schedule Optimizer</h1>
+    <p class="info-text">Select a week and upload student availability to generate an optimized schedule.</p>
+    
+    <form method="post" enctype="multipart/form-data">
+        <div class="week-selector">
+            <label for="week_start">📅 Select Week to Schedule:</label>
+            <select name="week_start" id="week_start" required>
+                {% for week in available_weeks %}
+                    <option value="{{ week.monday.isoformat() }}" 
+                            {% if week.monday == default_week %}selected{% endif %}>
+                        Week of {{ week.monday.strftime('%B %d, %Y') }} 
+                        ({{ week.monday.strftime('%m/%d') }} - {{ week.sunday.strftime('%m/%d/%Y') }})
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <input type="file" name="file" accept=".xlsx,.xls" required>
+        <input type="submit" value="Generate Schedule">
+    </form>
+</div>
