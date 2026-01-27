@@ -1,2 +1,33 @@
-.env/
-/.env
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+venv/
+env/
+ENV/
+*.pyc
+
+# Secrets
+graph_auth.py
+client_secret.json
+.env
+*.pem
+*.key
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Teams
+manifest/
+*.zip
+
+# Excel test files
+*.xlsx
+*.xls
