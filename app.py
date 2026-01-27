@@ -4,10 +4,11 @@ from scheduling_logic import create_availability_matrix, run_schedule_optimizati
 from graph_scheduler import regenerate_weekly_schedule, delete_shifts_for_week, get_upcoming_monday
 from graph_auth import get_graph_token
 from datetime import timedelta, date
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
-TEAM_ID = "ce038a3b-71cf-4da2-bd43-f98349dc52fc"
+TEAM_ID = os.getenv("TEAM_ID")
 
 # In-memory storage of last generated schedule (demo-safe)
 CURRENT_SCHEDULE = None
