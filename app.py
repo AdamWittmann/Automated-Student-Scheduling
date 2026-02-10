@@ -5,6 +5,7 @@ from graph_scheduler import regenerate_weekly_schedule, delete_shifts_for_week, 
 from graph_auth import get_graph_token
 from datetime import timedelta, date
 from dotenv import load_dotenv
+import os
 
 app = Flask(__name__)
 
@@ -14,6 +15,7 @@ TEAM_ID = os.getenv("TEAM_ID")
 CURRENT_SCHEDULE = None
 SELECTED_WEEK_START = None  # Track which Monday was selected
 
+os.makedirs("schedule_logs", exist_ok=True)
 
 def get_next_n_mondays(n=8):
     """Generate list of upcoming Monday dates with their Sunday end dates"""
@@ -133,6 +135,10 @@ def publish_to_teams():
         week_end = SELECTED_WEEK_START + timedelta(days=6)
         message = f"✅ Schedule published to Microsoft Teams for {SELECTED_WEEK_START.strftime('%m/%d/%Y')} - {week_end.strftime('%m/%d/%Y')}"
         return jsonify({"success": True, "message": message})
+
+        df = pd.dataframe(CURRENT_SCHEDULE)
+        df.to_csv(f"schedule_logs/{SELECTED_WEEK_START.isoformat()}.csv", index = False)
+        
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
