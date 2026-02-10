@@ -5,6 +5,7 @@ from graph_scheduler import regenerate_weekly_schedule, delete_shifts_for_week, 
 from graph_auth import get_graph_token
 from datetime import timedelta, date
 from dotenv import load_dotenv
+import pandas as pd
 import os
 
 app = Flask(__name__)
@@ -134,10 +135,11 @@ def publish_to_teams():
 
         week_end = SELECTED_WEEK_START + timedelta(days=6)
         message = f"✅ Schedule published to Microsoft Teams for {SELECTED_WEEK_START.strftime('%m/%d/%Y')} - {week_end.strftime('%m/%d/%Y')}"
+        df = pd.DataFrame(CURRENT_SCHEDULE)
+        df.to_csv(f"schedule_logs/{SELECTED_WEEK_START.isoformat()}.csv", index = False)
         return jsonify({"success": True, "message": message})
 
-        df = pd.dataframe(CURRENT_SCHEDULE)
-        df.to_csv(f"schedule_logs/{SELECTED_WEEK_START.isoformat()}.csv", index = False)
+        
         
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
@@ -152,35 +154,48 @@ def reset_teams_schedule():
     sunday = monday + timedelta(days=6)
     
     try:
-        token = get_graph_token()
-        deleted, failed = delete_shifts_for_week(
-            team_id=TEAM_ID,
-            token=token,
-            week_start=monday,
-            week_end=sunday
-        )
-        
-        # Also delete open shifts
-        from graph_scheduler import delete_open_shifts_for_week
-        deleted_open, failed_open = delete_open_shifts_for_week(
-            team_id=TEAM_ID,
-            token=token,
-            week_start=monday,
-            week_end=sunday
-        )
+        total_deleted = 0
+        total_deleted_open = 0
+        failed = 0
+        failed_open = 0
 
-        message = f"🧹 Reset complete for week of {monday.strftime('%m/%d/%Y')}: {deleted} assigned shifts deleted, {deleted_open} open shifts deleted"
+        for attempt in range(3):
+            token = get_graph_token()
+            deleted, failed = delete_shifts_for_week(
+                team_id=TEAM_ID,
+                token=token,
+                week_start=monday,
+                week_end=sunday
+            )
+            
+            from graph_scheduler import delete_open_shifts_for_week
+            deleted_open, failed_open = delete_open_shifts_for_week(
+                team_id=TEAM_ID,
+                token=token,
+                week_start=monday,
+                week_end=sunday
+            )
+
+            total_deleted += deleted
+            total_deleted_open += deleted_open
+
+            if failed == 0 and failed_open == 0:
+                break
+
+        message = f"🧹 Reset complete for week of {monday.strftime('%m/%d/%Y')}: {total_deleted} assigned shifts deleted, {total_deleted_open} open shifts deleted"
+        if failed > 0 or failed_open > 0:
+            message += f" (⚠️ {failed + failed_open} shifts could not be deleted after 3 attempts)"
+        
         return jsonify({
             "success": True, 
             "message": message, 
-            "deleted": deleted, 
+            "deleted": total_deleted, 
             "failed": failed,
-            "deleted_open": deleted_open,
+            "deleted_open": total_deleted_open,
             "failed_open": failed_open
         })
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True)
