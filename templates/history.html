@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Schedule History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='schedule.css') }}">
+
+    <style>
+        .history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            border-bottom: 1px solid #e8e8e8;
+            transition: background 0.15s;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-item:hover {
+            background: #f5f5ff;
+        }
+
+        .history-item-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .history-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #6264a7 0%, #4a4c7e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .history-week-label {
+            font-weight: 600;
+            color: #292828;
+            font-size: 0.95rem;
+        }
+
+        .history-week-sub {
+            color: #666;
+            font-size: 0.82rem;
+            margin-top: 2px;
+        }
+
+        .history-view-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: #6264a7;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .history-view-btn:hover {
+            background: #4a4c7e;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 12px;
+        }
+
+        .empty-state p {
+            font-size: 0.95rem;
+            margin: 6px 0;
+        }
+    </style>
+</head>
+<body>
+<div class="teams-shell">
+    <div class="teams-header">
+        <div class="teams-header-title">
+            <div class="teams-header-pill">SS</div>
+            <span>Student Scheduling</span>
+        </div>
+        <div class="teams-header-sub">
+            Marist University
+        </div>
+    </div>
+
+    <div class="page-body">
+        <div class="container">
+            <a href="{{ url_for('upload_file') }}" class="back-button">
+                <span class="icon">←</span>
+                <span>New Schedule</span>
+            </a>
+
+            <h1>
+                Schedule History
+                <span class="sub">Previously published schedules</span>
+            </h1>
+
+            <div class="card">
+                <div class="card-inner">
+                    <div class="eyebrow">Published Schedules</div>
+                    <h2>Past Weeks</h2>
+
+                    {% if saved_weeks %}
+                        <ul class="history-list">
+                            {% for monday in saved_weeks %}
+                                {% set sunday = monday + import('datetime').timedelta(days=6) if false else none %}
+                                <li class="history-item">
+                                    <div class="history-item-left">
+                                        <div class="history-icon">📅</div>
+                                        <div>
+                                            <div class="history-week-label">
+                                                Week of {{ monday.strftime('%B %d, %Y') }}
+                                            </div>
+                                            <div class="history-week-sub">
+                                                {{ monday.strftime('%m/%d/%Y') }} – {{ (monday + timedelta(days=6)).strftime('%m/%d/%Y') }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <a href="/history/{{ monday.isoformat() }}" class="history-view-btn">
+                                        View →
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <p><strong>No schedules published yet</strong></p>
+                            <p>Published schedules will appear here for future reference.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

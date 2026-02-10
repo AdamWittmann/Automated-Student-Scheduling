@@ -1,4 +1,5 @@
 # app.py
+from schedule_log import save_schedule_log, load_schedule_log, list_saved_schedules
 from flask import Flask, render_template, request, redirect, jsonify
 from scheduling_logic import create_availability_matrix, run_schedule_optimization
 from graph_scheduler import regenerate_weekly_schedule, delete_shifts_for_week, get_upcoming_monday
@@ -16,7 +17,7 @@ TEAM_ID = os.getenv("TEAM_ID")
 CURRENT_SCHEDULE = None
 SELECTED_WEEK_START = None  # Track which Monday was selected
 
-os.makedirs("schedule_logs", exist_ok=True)
+
 
 def get_next_n_mondays(n=8):
     """Generate list of upcoming Monday dates with their Sunday end dates"""
@@ -135,8 +136,10 @@ def publish_to_teams():
 
         week_end = SELECTED_WEEK_START + timedelta(days=6)
         message = f"✅ Schedule published to Microsoft Teams for {SELECTED_WEEK_START.strftime('%m/%d/%Y')} - {week_end.strftime('%m/%d/%Y')}"
-        df = pd.DataFrame(CURRENT_SCHEDULE)
-        df.to_csv(f"schedule_logs/{SELECTED_WEEK_START.isoformat()}.csv", index = False)
+
+        #Save schedule to logs
+        save_schedule_log(CURRENT_SCHEDULE, SELECTED_WEEK_START)
+
         return jsonify({"success": True, "message": message})
 
         
@@ -196,6 +199,32 @@ def reset_teams_schedule():
         })
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
+
+@app.route('/history', methods=['GET'])
+def history():
+    saved_weeks = list_saved_schedules()
+    return render_template('history.html', saved_weeks=saved_weeks, timedelta=timedelta)
+
+@app.route('/history/<week_date>', methods=['GET'])
+def view_past_schedule(week_date):
+    global CURRENT_SCHEDULE, SELECTED_WEEK_START
+    week_monday = date.fromisoformat(week_date)
+    schedule = load_schedule_log(week_monday)
+    if schedule is None:
+        return redirect('/history')
+    
+    CURRENT_SCHEDULE = schedule
+    SELECTED_WEEK_START = week_monday
+    
+    return render_template(
+        'schedule.html',
+        schedule=schedule,
+        student_hours=None,
+        visual_grid_data=None,
+        available_weeks=get_next_n_mondays(),
+        selected_week=week_monday,
+        selected_week_end=week_monday + timedelta(days=6)
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)

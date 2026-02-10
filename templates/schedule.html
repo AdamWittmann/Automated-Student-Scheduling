@@ -224,21 +224,24 @@ button:disabled {
                 <div class="card" style="margin-top: 16px;">
                     <div class="card-inner" style="display: flex; gap: 12px; flex-wrap: wrap;">
                         
-                        <form action="/publish-to-teams" method="post">
-                            <button type="submit" class="primary-btn">
-                                Publish Schedule to Microsoft Teams
+                        <form id="publish-form" action="/publish-to-teams" method="post">
+                            <button id="publish-btn" type="submit" class="primary-btn">
+                                <span class="btn-text">Publish Schedule to Microsoft Teams</span>
+                                <span class="btn-loading"><span class="spinner"></span> Publishing...</span>
                             </button>
                         </form>
 
-                        <form action="/reset-teams-schedule" method="post">
+                        <form id="reset-form" action="/reset-teams-schedule" method="post">
                             <button
                                 type="submit"
                                 class="danger-btn"
                                 onclick="return confirm('Are you sure you want to delete this week’s Teams shifts?')">
                                 Reset Teams Schedule (This Week)
                             </button>
+                                <span class="btn-text">Reset Teams Schedule (This Week)</span>
+                                <span class="btn-loading"><span class="spinner"></span> Resetting...</span>
+                            </button>
                         </form>
-
                     </div>
                 </div>
 
@@ -475,6 +478,12 @@ button:disabled {
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        // ---- Button loading states with AJAX ----
+        const publishForm = document.getElementById('publish-form');
+        const resetForm = document.getElementById('reset-form');
+        const publishBtn = document.getElementById('publish-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        
         // ---- Visual Grid Rendering ----
         const visualGridData = {{ visual_grid_data | tojson | safe }};
         if (visualGridData) {
@@ -575,11 +584,7 @@ button:disabled {
             bar.style.width = width;
         });
 
-        // ---- Button loading states with AJAX ----
-        const publishForm = document.getElementById('publish-form');
-        const resetForm = document.getElementById('reset-form');
-        const publishBtn = document.getElementById('publish-btn');
-        const resetBtn = document.getElementById('reset-btn');
+        
 
         if (publishForm && publishBtn) {
             publishForm.addEventListener('submit', function(e) {
