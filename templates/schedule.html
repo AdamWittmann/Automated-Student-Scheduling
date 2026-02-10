@@ -201,6 +201,9 @@ button:disabled {
                 <span class="icon">←</span>
                 <span>New Schedule</span>
             </a>
+            <a href="/history" class="back-button" style="margin-left: 8px;">
+                <span>History</span>
+            </a>
 
             {% if error %}
                 <div class="card error-card">
@@ -216,10 +219,22 @@ button:disabled {
                     </div>
                 </div>
             {% else %}
-                <h1>
+                 <h1>
                     Generated Optimal Schedule
                     <span class="sub">Balanced coverage &amp; fairness</span>
                 </h1>
+
+                {% if selected_week %}
+                <div class="week-info-banner">
+                    <div class="week-info-content">
+                        <span class="week-icon">📅</span>
+                        <div>
+                            <h2>Week of {{ selected_week.strftime('%B %d, %Y') }}</h2>
+                            <p>{{ selected_week.strftime('%m/%d/%Y') }} – {{ selected_week_end.strftime('%m/%d/%Y') }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                  <!-- === TEAMS ACTION BUTTONS === -->
                 <div class="card" style="margin-top: 16px;">
                     <div class="card-inner" style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -383,7 +398,7 @@ button:disabled {
                         </table>
                     </div>
                 </div>
-
+                {% if student_hours %}
                 <!-- === FAIRNESS RESULT === -->
                 <div class="card">
                     <div class="card-inner">
@@ -397,7 +412,7 @@ button:disabled {
                                 <span>20 hrs</span>
                             </div>
                         </div>
-
+                    
                         <div class="fairness-wrapper">
                             <table class="fairness-table">
                                 <thead>
@@ -435,6 +450,7 @@ button:disabled {
                         </div>
                     </div>
                 </div>
+            {% endif %}
             {% endif %}
         </div>
     </div>
