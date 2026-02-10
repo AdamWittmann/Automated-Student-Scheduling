@@ -1,0 +1,40 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.24/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.24",
+  "id": "e8700504-4092-4e9b-8af9-848c09615611",
+  "version": "1.0.1",
+
+  "developer": {
+  "name": "Adam Wittmann",
+  "websiteUrl": "https://annalee-adulatory-inefficaciously.ngrok-free.dev/",
+  "privacyUrl": "https://example.com/privacy",
+  "termsOfUseUrl": "https://example.com/terms"
+  },
+
+  "name": {
+    "short": "Scheduling App",
+    "full": "Intelligent Shift Scheduling App"
+  },
+  "description": {
+    "short": "blah blah blah",
+    "full": "blah blah blah blah"
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#FFFFFF",
+  "validDomains": [
+    "your-ngrok-domain.ngrok.io",
+    "teams.microsoft.com"
+  ],
+  "staticTabs": [
+    {
+      "entityId": "tab1",
+      "name": "Tab Name",
+      "contentUrl": "https://annalee-adulatory-inefficaciously.ngrok-free.dev/",
+      "websiteUrl": "https://annalee-adulatory-inefficaciously.ngrok-free.dev/",
+      "scopes": ["personal"]
+    }
+  ]
+}

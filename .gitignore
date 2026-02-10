@@ -31,3 +31,6 @@ manifest/
 # Excel test files
 *.xlsx
 *.xls
+
+# Schedule Logs
+schedule_logs/

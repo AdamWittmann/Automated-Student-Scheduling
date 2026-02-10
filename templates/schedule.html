@@ -201,6 +201,9 @@ button:disabled {
                 <span class="icon">←</span>
                 <span>New Schedule</span>
             </a>
+            <a href="/history" class="back-button" style="margin-left: 8px;">
+                <span>History</span>
+            </a>
 
             {% if error %}
                 <div class="card error-card">
@@ -216,29 +219,39 @@ button:disabled {
                     </div>
                 </div>
             {% else %}
-                <h1>
+                 <h1>
                     Generated Optimal Schedule
                     <span class="sub">Balanced coverage &amp; fairness</span>
                 </h1>
+
+                {% if selected_week %}
+                <div class="week-info-banner">
+                    <div class="week-info-content">
+                        <span class="week-icon">📅</span>
+                        <div>
+                            <h2>Week of {{ selected_week.strftime('%B %d, %Y') }}</h2>
+                            <p>{{ selected_week.strftime('%m/%d/%Y') }} – {{ selected_week_end.strftime('%m/%d/%Y') }}</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                  <!-- === TEAMS ACTION BUTTONS === -->
                 <div class="card" style="margin-top: 16px;">
                     <div class="card-inner" style="display: flex; gap: 12px; flex-wrap: wrap;">
                         
-                        <form action="/publish-to-teams" method="post">
-                            <button type="submit" class="primary-btn">
-                                Publish Schedule to Microsoft Teams
+                        <form id="publish-form" action="/publish-to-teams" method="post">
+                            <button id="publish-btn" type="submit" class="primary-btn">
+                                <span class="btn-text">Publish Schedule to Microsoft Teams</span>
+                                <span class="btn-loading"><span class="spinner"></span> Publishing...</span>
                             </button>
                         </form>
 
-                        <form action="/reset-teams-schedule" method="post">
-                            <button
-                                type="submit"
-                                class="danger-btn"
-                                onclick="return confirm('Are you sure you want to delete this week’s Teams shifts?')">
-                                Reset Teams Schedule (This Week)
+                        <form id="reset-form" action="/reset-teams-schedule" method="post">
+                            <button id="reset-btn" type="submit" class="danger-btn">
+                                <span class="btn-text">Reset Teams Schedule (This Week)</span>
+                                <span class="btn-loading"><span class="spinner"></span> Resetting...</span>
                             </button>
                         </form>
-
                     </div>
                 </div>
 
@@ -385,7 +398,7 @@ button:disabled {
                         </table>
                     </div>
                 </div>
-
+                {% if student_hours %}
                 <!-- === FAIRNESS RESULT === -->
                 <div class="card">
                     <div class="card-inner">
@@ -399,7 +412,7 @@ button:disabled {
                                 <span>20 hrs</span>
                             </div>
                         </div>
-
+                    
                         <div class="fairness-wrapper">
                             <table class="fairness-table">
                                 <thead>
@@ -438,6 +451,7 @@ button:disabled {
                     </div>
                 </div>
             {% endif %}
+            {% endif %}
         </div>
     </div>
 </div>
@@ -475,6 +489,12 @@ button:disabled {
     }
 
     document.addEventListener('DOMContentLoaded', function () {
+        // ---- Button loading states with AJAX ----
+        const publishForm = document.getElementById('publish-form');
+        const resetForm = document.getElementById('reset-form');
+        const publishBtn = document.getElementById('publish-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
         // ---- Visual Grid Rendering ----
         const visualGridData = {{ visual_grid_data | tojson | safe }};
         if (visualGridData) {
@@ -575,11 +595,7 @@ button:disabled {
             bar.style.width = width;
         });
 
-        // ---- Button loading states with AJAX ----
-        const publishForm = document.getElementById('publish-form');
-        const resetForm = document.getElementById('reset-form');
-        const publishBtn = document.getElementById('publish-btn');
-        const resetBtn = document.getElementById('reset-btn');
+        
 
         if (publishForm && publishBtn) {
             publishForm.addEventListener('submit', function(e) {

@@ -104,6 +104,7 @@ h2 {
     border: 1px solid #3c3c3c;
     position: relative;
     overflow: hidden;
+    
 }
 
 .card::before {
@@ -134,6 +135,9 @@ h2 {
     font-size: 0.9rem;
     transition: background-color 0.18s, transform 0.1s, box-shadow 0.18s;
     margin-bottom: 18px;
+    min-width: 50px;
+    height: 38px;
+    box-sizing: border-box;
 }
 
 .back-button:hover {
@@ -157,6 +161,26 @@ h2 {
     padding: 10px 12px;
     border: 1px solid rgba(209, 52, 56, 0.5);
     font-size: 0.9rem;
+}
+
+.primary-btn, .danger-btn{
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #6264a7;
+    color: #ffffff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background-color 0.18s, transform 0.1s, box-shadow 0.18s;
+    margin-bottom: 18px;
+    min-width: 50px;
+    height: 38px;
+    box-sizing: border-box;
 }
 
 /* Tabs */
