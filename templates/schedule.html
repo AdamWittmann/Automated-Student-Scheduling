@@ -232,12 +232,7 @@ button:disabled {
                         </form>
 
                         <form id="reset-form" action="/reset-teams-schedule" method="post">
-                            <button
-                                type="submit"
-                                class="danger-btn"
-                                onclick="return confirm('Are you sure you want to delete this week’s Teams shifts?')">
-                                Reset Teams Schedule (This Week)
-                            </button>
+                            <button id="reset-btn" type="submit" class="danger-btn">
                                 <span class="btn-text">Reset Teams Schedule (This Week)</span>
                                 <span class="btn-loading"><span class="spinner"></span> Resetting...</span>
                             </button>
@@ -483,7 +478,7 @@ button:disabled {
         const resetForm = document.getElementById('reset-form');
         const publishBtn = document.getElementById('publish-btn');
         const resetBtn = document.getElementById('reset-btn');
-        
+
         // ---- Visual Grid Rendering ----
         const visualGridData = {{ visual_grid_data | tojson | safe }};
         if (visualGridData) {
