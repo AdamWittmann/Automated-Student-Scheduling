@@ -1,7 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
+{% extends "base.html" %}
+{% block head %}
     <title>Generated Schedule</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='schedule.css') }}">
 
@@ -170,8 +168,8 @@ button:disabled {
     animation: slideOut 0.3s ease-out forwards;
 }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block content %}
 <!-- Notification Container -->
 <div id="notification" class="notification">
     <div class="notification-content">
@@ -201,9 +199,6 @@ button:disabled {
                 <span class="icon">←</span>
                 <span>New Schedule</span>
             </a>
-            <a href="/history" class="back-button" style="margin-left: 8px;">
-                <span>History</span>
-            </a>
 
             {% if error %}
                 <div class="card error-card">
@@ -219,22 +214,10 @@ button:disabled {
                     </div>
                 </div>
             {% else %}
-                 <h1>
+                <h1>
                     Generated Optimal Schedule
                     <span class="sub">Balanced coverage &amp; fairness</span>
                 </h1>
-
-                {% if selected_week %}
-                <div class="week-info-banner">
-                    <div class="week-info-content">
-                        <span class="week-icon">📅</span>
-                        <div>
-                            <h2>Week of {{ selected_week.strftime('%B %d, %Y') }}</h2>
-                            <p>{{ selected_week.strftime('%m/%d/%Y') }} – {{ selected_week_end.strftime('%m/%d/%Y') }}</p>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
                  <!-- === TEAMS ACTION BUTTONS === -->
                 <div class="card" style="margin-top: 16px;">
                     <div class="card-inner" style="display: flex; gap: 12px; flex-wrap: wrap;">
@@ -255,6 +238,7 @@ button:disabled {
                     </div>
                 </div>
 
+                {% if visual_grid_data %}
                 <!-- === VISUAL SCHEDULE CARD (Tabs: Matrix / By Shift) === -->
                 <div class="card">
                     <div class="card-inner">
@@ -270,7 +254,7 @@ button:disabled {
                         </div>
 
                         <p class="card-description">
-                            See which students are assigned to each shift slot, then switch to “By shift” for
+                            See which students are assigned to each shift slot, then switch to "By shift" for
                             a grouped view by day.
                         </p>
 
@@ -306,7 +290,6 @@ button:disabled {
                                         <tbody>
                                         {% set ns = namespace(last_day='') %}
                                         {% for item in schedule %}
-                                            {# Split "Mon 7.25-9.00" into day + times using Python string method #}
                                             {% set parts = item.shift.split(' ') %}
                                             {% set day = parts[0] %}
                                             {% if parts|length > 1 %}
@@ -315,7 +298,6 @@ button:disabled {
                                                 {% set times = '' %}
                                             {% endif %}
 
-                                            {# Day header row whenever day changes #}
                                             {% if ns.last_day != day %}
                                                 <tr class="shift-day-row">
                                                     <td colspan="3">
@@ -325,7 +307,6 @@ button:disabled {
                                                 {% set ns.last_day = day %}
                                             {% endif %}
 
-                                            {# Coverage % for bar #}
                                             {% set fill = 0 %}
                                             {% if item.required > 0 %}
                                                 {% if item.assigned_count <= item.required %}
@@ -370,6 +351,7 @@ button:disabled {
                         </div>
                     </div>
                 </div>
+                {% endif %}
 
                 <!-- === SHIFT ASSIGNMENT SUMMARY (Tabular) === -->
                 <div class="card shift-table">
@@ -398,6 +380,7 @@ button:disabled {
                         </table>
                     </div>
                 </div>
+
                 {% if student_hours %}
                 <!-- === FAIRNESS RESULT === -->
                 <div class="card">
@@ -412,7 +395,7 @@ button:disabled {
                                 <span>20 hrs</span>
                             </div>
                         </div>
-                    
+
                         <div class="fairness-wrapper">
                             <table class="fairness-table">
                                 <thead>
@@ -443,19 +426,20 @@ button:disabled {
                             </table>
 
                             <p class="fairness-note">
-                                Each student’s bar shows how close they are to the weekly hour limit. The solver first
+                                Each student's bar shows how close they are to the weekly hour limit. The solver first
                                 maximizes overall coverage, then minimizes the gap between the most- and least-scheduled
                                 students for a more equitable load.
                             </p>
                         </div>
                     </div>
                 </div>
-            {% endif %}
+                {% endif %}
             {% endif %}
         </div>
     </div>
 </div>
-
+{% endblock %}
+{% block scripts %}
 <script>
     // Notification System
     function showNotification(title, message, type = 'success') {
@@ -464,17 +448,11 @@ button:disabled {
         const titleEl = document.getElementById('notification-title');
         const messageEl = document.getElementById('notification-message');
 
-        // Set content
         titleEl.textContent = title;
         messageEl.textContent = message;
-        
-        // Set icon
         icon.textContent = type === 'success' ? '✅' : '❌';
-        
-        // Set type
         notification.className = 'notification show ' + type;
 
-        // Auto-hide after 5 seconds
         setTimeout(() => {
             hideNotification();
         }, 5000);
@@ -489,82 +467,81 @@ button:disabled {
     }
 
     document.addEventListener('DOMContentLoaded', function () {
-        // ---- Button loading states with AJAX ----
         const publishForm = document.getElementById('publish-form');
         const resetForm = document.getElementById('reset-form');
         const publishBtn = document.getElementById('publish-btn');
         const resetBtn = document.getElementById('reset-btn');
 
-        // ---- Visual Grid Rendering ----
-        const visualGridData = {{ visual_grid_data | tojson | safe }};
-        if (visualGridData) {
-            const table = document.getElementById('schedule-grid-table');
-            const students = visualGridData.students;
-            const shiftKeys = visualGridData.shift_keys;
-            const assignments = visualGridData.assignments;
+        try {
+            const visualGridData = {{ visual_grid_data | tojson | safe }};
+            if (visualGridData) {
+                const table = document.getElementById('schedule-grid-table');
+                const students = visualGridData.students;
+                const shiftKeys = visualGridData.shift_keys;
+                const assignments = visualGridData.assignments;
 
-            function formatShiftTime(shiftKey) {
-                const parts = shiftKey.split(' ');
-                const day = parts[0];
-                const timeRange = parts[1];
-                const floats = timeRange.split('-').map(parseFloat);
+                function formatShiftTime(shiftKey) {
+                    const parts = shiftKey.split(' ');
+                    const day = parts[0];
+                    const timeRange = parts[1];
+                    const floats = timeRange.split('-').map(parseFloat);
 
-                function floatToTime(fh) {
-                    const hours = Math.floor(fh);
-                    const minutes = Math.round((fh - hours) * 60);
-                    const paddedMinutes = String(minutes).padStart(2, '0');
-                    return hours + ':' + paddedMinutes;
+                    function floatToTime(fh) {
+                        const hours = Math.floor(fh);
+                        const minutes = Math.round((fh - hours) * 60);
+                        const paddedMinutes = String(minutes).padStart(2, '0');
+                        return hours + ':' + paddedMinutes;
+                    }
+
+                    return day + ' ' + floatToTime(floats[0]) + ' - ' + floatToTime(floats[1]);
                 }
 
-                return day + ' ' + floatToTime(floats[0]) + ' - ' + floatToTime(floats[1]);
-            }
+                const thead = table.createTHead();
+                const headerRow = thead.insertRow();
 
-            // Header
-            const thead = table.createTHead();
-            const headerRow = thead.insertRow();
+                const emptyCell = document.createElement('th');
+                emptyCell.textContent = 'Student / Shift';
+                headerRow.appendChild(emptyCell);
 
-            const emptyCell = document.createElement('th');
-            emptyCell.textContent = 'Student / Shift';
-            headerRow.appendChild(emptyCell);
-
-            shiftKeys.forEach(function (key) {
-                const th = document.createElement('th');
-                th.textContent = formatShiftTime(key);
-                headerRow.appendChild(th);
-            });
-
-            // Body
-            const tbody = table.createTBody();
-            let cellAnimationIndex = 0;
-
-            students.forEach(function (student) {
-                const row = tbody.insertRow();
-                const studentCell = row.insertCell();
-                studentCell.textContent = student;
-
-                shiftKeys.forEach(function (shiftKey) {
-                    const assignmentCell = row.insertCell();
-                    const isAssigned = assignments[student][shiftKey];
-
-                    if (isAssigned === 1) {
-                        assignmentCell.classList.add('assigned');
-                        assignmentCell.title = student + ' assigned to ' + formatShiftTime(shiftKey);
-
-                        const dot = document.createElement('div');
-                        dot.className = 'assigned-dot';
-                        assignmentCell.appendChild(dot);
-
-                        assignmentCell.classList.add('cell-animate-in');
-                        assignmentCell.style.animationDelay = (cellAnimationIndex * 0.01) + 's';
-                        cellAnimationIndex += 1;
-                    } else {
-                        assignmentCell.title = student + ' is available but not assigned.';
-                    }
+                shiftKeys.forEach(function (key) {
+                    const th = document.createElement('th');
+                    th.textContent = formatShiftTime(key);
+                    headerRow.appendChild(th);
                 });
-            });
+
+                const tbody = table.createTBody();
+                let cellAnimationIndex = 0;
+
+                students.forEach(function (student) {
+                    const row = tbody.insertRow();
+                    const studentCell = row.insertCell();
+                    studentCell.textContent = student;
+
+                    shiftKeys.forEach(function (shiftKey) {
+                        const assignmentCell = row.insertCell();
+                        const isAssigned = assignments[student][shiftKey];
+
+                        if (isAssigned === 1) {
+                            assignmentCell.classList.add('assigned');
+                            assignmentCell.title = student + ' assigned to ' + formatShiftTime(shiftKey);
+
+                            const dot = document.createElement('div');
+                            dot.className = 'assigned-dot';
+                            assignmentCell.appendChild(dot);
+
+                            assignmentCell.classList.add('cell-animate-in');
+                            assignmentCell.style.animationDelay = (cellAnimationIndex * 0.01) + 's';
+                            cellAnimationIndex += 1;
+                        } else {
+                            assignmentCell.title = student + ' is available but not assigned.';
+                        }
+                    });
+                });
+            }
+        } catch(e) {
+            console.log('Grid rendering skipped:', e);
         }
 
-        // ---- Tabs ----
         const tabs = document.querySelectorAll('.tab');
         const views = {
             'grid-view': document.getElementById('grid-view'),
@@ -581,63 +558,46 @@ button:disabled {
                 tab.classList.add('active');
 
                 Object.keys(views).forEach(function (key) {
-                    views[key].classList.toggle('active', key === target);
+                    if (views[key]) {
+                        views[key].classList.toggle('active', key === target);
+                    }
                 });
             });
         });
 
-        // Animate coverage bars in By-shift view
         const coverageBars = document.querySelectorAll('.coverage-bar');
         coverageBars.forEach(function (bar) {
             const width = bar.style.width;
             bar.style.width = '0';
-            void bar.offsetWidth; // reflow
+            void bar.offsetWidth;
             bar.style.width = width;
         });
-
-        
 
         if (publishForm && publishBtn) {
             publishForm.addEventListener('submit', function(e) {
                 e.preventDefault();
                 
-                console.log('Publish button clicked - showing loading state');
-                
-                // Show loading state
                 publishBtn.classList.add('loading');
                 publishBtn.disabled = true;
                 if (resetBtn) resetBtn.disabled = true;
 
-                console.log('Button classes:', publishBtn.className);
-                console.log('Button disabled:', publishBtn.disabled);
-
-                // Make AJAX request
                 fetch('/publish-to-teams', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Publish response:', data);
-                    
                     if (data.success) {
                         showNotification('Published!', data.message, 'success');
                     } else {
                         showNotification('Error', data.message, 'error');
                     }
-                    
-                    // Remove loading state
                     publishBtn.classList.remove('loading');
                     publishBtn.disabled = false;
                     if (resetBtn) resetBtn.disabled = false;
                 })
                 .catch(error => {
-                    console.error('Publish error:', error);
                     showNotification('Error', 'Failed to publish schedule: ' + error, 'error');
-                    
-                    // Remove loading state
                     publishBtn.classList.remove('loading');
                     publishBtn.disabled = false;
                     if (resetBtn) resetBtn.disabled = false;
@@ -653,17 +613,13 @@ button:disabled {
                     return false;
                 }
                 
-                // Show loading state
                 resetBtn.classList.add('loading');
                 resetBtn.disabled = true;
                 if (publishBtn) publishBtn.disabled = true;
 
-                // Make AJAX request
                 fetch('/reset-teams-schedule', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
+                    headers: { 'Content-Type': 'application/json' }
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -672,16 +628,12 @@ button:disabled {
                     } else {
                         showNotification('Error', data.message, 'error');
                     }
-                    
-                    // Remove loading state
                     resetBtn.classList.remove('loading');
                     resetBtn.disabled = false;
                     if (publishBtn) publishBtn.disabled = false;
                 })
                 .catch(error => {
                     showNotification('Error', 'Failed to reset schedule: ' + error, 'error');
-                    
-                    // Remove loading state
                     resetBtn.classList.remove('loading');
                     resetBtn.disabled = false;
                     if (publishBtn) publishBtn.disabled = false;
@@ -690,5 +642,4 @@ button:disabled {
         }
     });
 </script>
-</body>
-</html>
+{% endblock %}

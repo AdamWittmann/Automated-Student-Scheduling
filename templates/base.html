@@ -1,0 +1,39 @@
+<!-- base.html -->
+ <!-- Template for every other template to confirm auth before anything -->
+<!doctype html>
+<html>
+<head>
+    <script src="https://res.cdn.office.net/teams-js/2.19.0/js/MicrosoftTeams.min.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body data-needs-auth="{{ needs_auth|default(false)|lower }}">
+    {% block content %}{% endblock %}
+
+    <script>
+        microsoftTeams.app.initialize().then(() => {
+            // Inside Teams
+            fetch('/check-auth')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.authenticated) {
+                        microsoftTeams.authentication.authenticate({
+                            url: window.location.origin + '/auth-start',
+                            width: 600,
+                            height: 535
+                        }).then(() => {
+                            window.location.reload();
+                        }).catch(err => {
+                            console.error('Auth failed:', err);
+                        });
+                    }
+                });
+        }).catch(() => {
+            // Not in Teams - use regular redirect
+            if (document.body.dataset.needsAuth === 'true') {
+                window.location.href = '/login';
+            }
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
