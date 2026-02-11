@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block head %}
+<title>Staff Scheduler - Sign In</title>
+<style>
+    body {
+        font-family: 'Segoe UI', sans-serif;
+        background-color: #201f1f;
+        color: #f3f2f1;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+    }
+    .login-card {
+        background-color: #292828;
+        padding: 40px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        text-align: center;
+        max-width: 400px;
+    }
+    .login-card h1 {
+        margin-bottom: 10px;
+    }
+    .login-card p {
+        color: #c8c6c4;
+        margin-bottom: 20px;
+    }
+    .spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-top-color: #6264a7;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+        margin: 0 auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="login-card">
+    <h1>Staff Scheduler</h1>
+    <p>Signing you in...</p>
+    <div class="spinner"></div>
+</div>
+{% endblock %}

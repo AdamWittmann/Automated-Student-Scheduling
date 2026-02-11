@@ -1,7 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
+{% extends "base.html" %}
+{% block head %}
     <title>Schedule History</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='schedule.css') }}">
 
@@ -96,8 +94,8 @@
             margin: 6px 0;
         }
     </style>
-</head>
-<body>
+{% endblock %}
+{% block content %}
 <div class="teams-shell">
     <div class="teams-header">
         <div class="teams-header-title">
@@ -161,4 +159,4 @@
     </div>
 </div>
 </body>
-</html>
+{% endblock %}
