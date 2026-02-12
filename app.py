@@ -248,8 +248,15 @@ def upload_file():
 def availability():
     if 'user' not in session:
         return redirect('/login')
-    return f"Welcome {session['user'].get('name')}! Student availability form coming soon."
+    from scheduling_logic import SHIFTS_CONFIG
+    shifts_config = [list(s) for s in SHIFTS_CONFIG]  # Convert tuples for JSON
     
+    return render_template(
+        'availability.html',
+        user_name=session['user'].get('name', 'Student'),
+        shifts_config=shifts_config
+    )
+
 @app.route('/publish-to-teams', methods=['POST'])
 @require_owner
 def publish_to_teams():
