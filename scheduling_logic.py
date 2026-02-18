@@ -98,10 +98,16 @@ def create_availability_matrix(excel_file_bytes):
 
 # --- Core Scheduling Logic (from SchedulingTest 1.ipynb) ---
 
-def run_schedule_optimization(students, availability_matrix):
+def run_schedule_optimization(students, availability_matrix, student_max_hours=None):
     """
     Runs the two-phase CP-SAT optimization to create the final schedule.
     Returns the scheduled assignments, the total hours per student, and the visual grid data.
+
+    Args:
+        students: List of student names.
+        availability_matrix: Dict of {student: {shift_id: 0|1}}.
+        student_max_hours: Optional dict of {student_name: max_hours (int/float)}.
+                           If None or a student is missing, falls back to MAX_WEEKLY_HOURS.
     """
 
     shifts_with_id = []
@@ -148,20 +154,27 @@ def run_schedule_optimization(students, availability_matrix):
 
     model.Add(coverage_sum == sum(coverage_terms))
 
-    # 2. Maximum Weekly Hours Constraint
+    # 2. Per-Student Maximum Weekly Hours Constraint
     total_hours = {}
-    max_weekly_hours_scaled = int(MAX_WEEKLY_HOURS * SCALE)
+    global_max_scaled = int(MAX_WEEKLY_HOURS * SCALE)
+
     for i in students:
-        student_hours = []
+        # Use per-student max if provided, otherwise fall back to global cap
+        if student_max_hours and i in student_max_hours:
+            per_student_max = int(student_max_hours[i] * SCALE)
+        else:
+            per_student_max = global_max_scaled
+
+        student_hour_terms = []
         for sid, day, start, end, required in shifts_with_id:
             shift_id = (day, start, end)
             if (shift_id, i) in x:
                 shift_length_scaled = int(shift_lengths[shift_id] * SCALE)
-                student_hours.append(x[shift_id, i] * shift_length_scaled)
+                student_hour_terms.append(x[shift_id, i] * shift_length_scaled)
 
-        total_hours[i] = model.NewIntVar(0, max_weekly_hours_scaled, f"total_hours_{i}")
-        model.Add(total_hours[i] == sum(student_hours))
-        model.Add(total_hours[i] <= max_weekly_hours_scaled)
+        total_hours[i] = model.NewIntVar(0, per_student_max, f"total_hours_{i}")
+        model.Add(total_hours[i] == sum(student_hour_terms))
+        model.Add(total_hours[i] <= per_student_max)
 
     # --------------------------
     # PHASE 1: Maximize coverage
@@ -186,11 +199,13 @@ def run_schedule_optimization(students, availability_matrix):
 
     all_student_hours = list(total_hours.values())
     if all_student_hours:
-        max_hours_scaled = model.NewIntVar(0, max_weekly_hours_scaled, "max_hours_scaled")
-        min_hours_scaled = model.NewIntVar(0, max_weekly_hours_scaled, "min_hours_scaled")
+        # Use the global max as the upper bound for the fairness variables
+        # since individual caps may differ
+        fairness_upper_bound = global_max_scaled
+        max_hours_scaled = model.NewIntVar(0, fairness_upper_bound, "max_hours_scaled")
+        min_hours_scaled = model.NewIntVar(0, fairness_upper_bound, "min_hours_scaled")
 
         model.AddMaxEquality(max_hours_scaled, all_student_hours)
-        # FIX: Corrected typo from all_hours_scaled to all_student_hours
         model.AddMinEquality(min_hours_scaled, all_student_hours)
 
         fairness_term = max_hours_scaled - min_hours_scaled

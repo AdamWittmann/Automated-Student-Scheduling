@@ -173,69 +173,107 @@ def get_submission_counts():
 
 def create_availability_matrix_from_csv(csv_path):
     """
-    Parse a student availability CSV into the same (students, availability_matrix)
-    format that create_availability_matrix returns from an Excel file.
+    Parse a student availability CSV into the same (students, availability_matrix, student_max_hours)
+    format that create_availability_matrix returns from an Excel file, plus per-student hour caps.
 
     CSV columns: CWID, Student Name, Email, Max Hours, Monday..Sunday
     Each day column contains a JSON array of time ranges like:
         ["07:00:00 - 09:00:00", "12:00:00 - 15:00:00"]
 
-    TODO: Adapt this to match your scheduling_logic's exact matrix format.
-    This is a scaffold — you'll need to map the time range strings back into
-    the shift indices that your optimizer expects.
+    Returns:
+        students: list of student names
+        availability_matrix: dict of {student_name: {(day, start, end): 0|1}}
+        student_max_hours: dict of {student_name: max_hours_float}
     """
     import csv
     import json
-    from scheduling_logic import SHIFTS_CONFIG
+    import re
+    from scheduling_logic import SHIFTS_CONFIG, MAX_WEEKLY_HOURS, time_str_to_float
 
     DAY_COL_TO_ABBR = {
         'Monday': 'Mon', 'Tuesday': 'Tue', 'Wednesday': 'Wed',
         'Thursday': 'Thu', 'Friday': 'Fri', 'Saturday': 'Sat', 'Sunday': 'Sun'
     }
 
-    # Build a lookup: (day_abbr, "HH:MM:SS - HH:MM:SS") -> shift index
-    shift_lookup = {}
-    for idx, shift in enumerate(SHIFTS_CONFIG):
-        day_abbr = shift[0]
-        start_f = shift[1]
-        end_f = shift[2]
-        # Convert float hours to HH:MM:SS to match CSV format
-        def float_to_time(f):
-            h = int(f)
-            m = int(round((f - h) * 60))
-            return f"{h:02d}:{m:02d}:00"
-        time_key = f"{float_to_time(start_f)} - {float_to_time(end_f)}"
-        shift_lookup[(day_abbr, time_key)] = idx
+    def parse_time_ranges(raw):
+        """
+        Robustly extract time ranges from a cell that may contain malformed JSON.
+        Returns a list of (start_float, end_float) tuples.
+        """
+        if not raw or raw.strip() in ('', '[]'):
+            return []
 
-    num_shifts = len(SHIFTS_CONFIG)
+        # First, try clean JSON parsing
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, list):
+                ranges = []
+                for item in parsed:
+                    item = str(item).strip()
+                    # Split on ' - ' or '-', but carefully (time has colons)
+                    parts = re.split(r'\s*-\s*(?=\d{2}:)', item, maxsplit=1)
+                    if len(parts) == 2:
+                        ranges.append((time_str_to_float(parts[0]), time_str_to_float(parts[1])))
+                return ranges
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        # Fallback: regex extraction for malformed JSON
+        # Find all HH:MM:SS patterns and pair them up
+        times = re.findall(r'(\d{1,2}:\d{2}:\d{2})', raw)
+        ranges = []
+        for i in range(0, len(times) - 1, 2):
+            start = time_str_to_float(times[i])
+            end = time_str_to_float(times[i + 1])
+            if end > start:
+                ranges.append((start, end))
+        return ranges
+
     students = []
-    availability_matrix = []
+    availability_matrix = {}
+    student_max_hours = {}
 
     with open(csv_path, 'r', newline='') as f:
         reader = csv.DictReader(f)
         for row in reader:
+            # Normalize column keys to title case so both
+            # "STUDENT NAME"/"MONDAY" and "Student Name"/"Monday" work
+            row = {k.strip().title(): v for k, v in row.items()}
+
             student_name = row.get('Student Name', '').strip()
             if not student_name:
                 continue
 
             students.append(student_name)
-            avail_row = [0] * num_shifts
+
+            # Parse max hours, fall back to global default
+            try:
+                max_h = float(row.get('Max Hours', MAX_WEEKLY_HOURS))
+            except (ValueError, TypeError):
+                max_h = MAX_WEEKLY_HOURS
+            student_max_hours[student_name] = max_h
+
+            # Build availability dict for this student
+            avail = {}
+            for day_abbr, start_f, end_f, _ in SHIFTS_CONFIG:
+                avail[(day_abbr, start_f, end_f)] = 0
 
             for day_col, day_abbr in DAY_COL_TO_ABBR.items():
                 raw = row.get(day_col, '[]')
-                try:
-                    time_ranges = json.loads(raw)
-                except (json.JSONDecodeError, TypeError):
-                    time_ranges = []
+                parsed_ranges = parse_time_ranges(raw)
 
-                for time_range in time_ranges:
-                    key = (day_abbr, time_range.strip())
-                    if key in shift_lookup:
-                        avail_row[shift_lookup[key]] = 1
+                # Use containment check — same logic as the Excel path
+                # A shift is available if ANY submitted range fully covers it
+                for day, shift_start, shift_end, _ in SHIFTS_CONFIG:
+                    if day != day_abbr:
+                        continue
+                    if any(rng_start <= shift_start and shift_end <= rng_end
+                           for rng_start, rng_end in parsed_ranges):
+                        avail[(day, shift_start, shift_end)] = 1
 
-            availability_matrix.append(avail_row)
+            availability_matrix[student_name] = avail
 
-    return students, availability_matrix
+    return students, availability_matrix, student_max_hours
 
 
 
@@ -276,6 +314,8 @@ def upload_file():
         session['selected_week_start'] = selected_week_start.isoformat()
 
         try:
+            student_max_hours = None  # Default: use global cap
+
             if source == 'upload':
                 # Fallback: manual Excel file upload
                 if 'file' not in request.files or request.files['file'].filename == '':
@@ -302,10 +342,10 @@ def upload_file():
                         error="No availability submissions found for this week. Students need to submit their availability first."
                     )
 
-                students, availability_matrix = create_availability_matrix_from_csv(csv_path)
+                students, availability_matrix, student_max_hours = create_availability_matrix_from_csv(csv_path)
 
             schedule, student_hours, visual_grid_data = run_schedule_optimization(
-                students, availability_matrix
+                students, availability_matrix, student_max_hours=student_max_hours
             )
 
             if schedule is None:
