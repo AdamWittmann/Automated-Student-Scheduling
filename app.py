@@ -147,6 +147,97 @@ def get_next_n_mondays(n=8):
     return weeks
 
 
+def get_submission_counts():
+    """Return a dict mapping week ISO dates to the number of student submissions."""
+    from pathlib import Path
+    import csv
+
+    csv_dir = Path('availability_submissions')
+    counts = {}
+
+    if not csv_dir.exists():
+        return counts
+
+    for csv_file in csv_dir.glob('availability_*.csv'):
+        # Filename format: availability_2025-02-24.csv
+        week_date = csv_file.stem.replace('availability_', '')
+        try:
+            with open(csv_file, 'r', newline='') as f:
+                reader = csv.DictReader(f)
+                counts[week_date] = sum(1 for _ in reader)
+        except Exception:
+            counts[week_date] = 0
+
+    return counts
+
+
+def create_availability_matrix_from_csv(csv_path):
+    """
+    Parse a student availability CSV into the same (students, availability_matrix)
+    format that create_availability_matrix returns from an Excel file.
+
+    CSV columns: CWID, Student Name, Email, Max Hours, Monday..Sunday
+    Each day column contains a JSON array of time ranges like:
+        ["07:00:00 - 09:00:00", "12:00:00 - 15:00:00"]
+
+    TODO: Adapt this to match your scheduling_logic's exact matrix format.
+    This is a scaffold — you'll need to map the time range strings back into
+    the shift indices that your optimizer expects.
+    """
+    import csv
+    import json
+    from scheduling_logic import SHIFTS_CONFIG
+
+    DAY_COL_TO_ABBR = {
+        'Monday': 'Mon', 'Tuesday': 'Tue', 'Wednesday': 'Wed',
+        'Thursday': 'Thu', 'Friday': 'Fri', 'Saturday': 'Sat', 'Sunday': 'Sun'
+    }
+
+    # Build a lookup: (day_abbr, "HH:MM:SS - HH:MM:SS") -> shift index
+    shift_lookup = {}
+    for idx, shift in enumerate(SHIFTS_CONFIG):
+        day_abbr = shift[0]
+        start_f = shift[1]
+        end_f = shift[2]
+        # Convert float hours to HH:MM:SS to match CSV format
+        def float_to_time(f):
+            h = int(f)
+            m = int(round((f - h) * 60))
+            return f"{h:02d}:{m:02d}:00"
+        time_key = f"{float_to_time(start_f)} - {float_to_time(end_f)}"
+        shift_lookup[(day_abbr, time_key)] = idx
+
+    num_shifts = len(SHIFTS_CONFIG)
+    students = []
+    availability_matrix = []
+
+    with open(csv_path, 'r', newline='') as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            student_name = row.get('Student Name', '').strip()
+            if not student_name:
+                continue
+
+            students.append(student_name)
+            avail_row = [0] * num_shifts
+
+            for day_col, day_abbr in DAY_COL_TO_ABBR.items():
+                raw = row.get(day_col, '[]')
+                try:
+                    time_ranges = json.loads(raw)
+                except (json.JSONDecodeError, TypeError):
+                    time_ranges = []
+
+                for time_range in time_ranges:
+                    key = (day_abbr, time_range.strip())
+                    if key in shift_lookup:
+                        avail_row[shift_lookup[key]] = 1
+
+            availability_matrix.append(avail_row)
+
+    return students, availability_matrix
+
+
 
 
 
@@ -172,12 +263,7 @@ def upload_file():
 
     # Owners (supervisors) see the normal dashboard
     if request.method == 'POST':
-        if 'file' not in request.files:
-            return redirect(request.url)
-
-        file = request.files['file']
-        if file.filename == '':
-            return redirect(request.url)
+        source = request.form.get('source', 'csv')
 
         # Get selected week from form (defaults to next Monday if not provided)
         selected_week_str = request.form.get('week_start')
@@ -189,44 +275,43 @@ def upload_file():
         # Store in session so publish/reset can reference it
         session['selected_week_start'] = selected_week_start.isoformat()
 
-        if file and file.filename.endswith(('.xlsx', '.xls')):
-            try:
+        try:
+            if source == 'upload':
+                # Fallback: manual Excel file upload
+                if 'file' not in request.files or request.files['file'].filename == '':
+                    return redirect(request.url)
+
+                file = request.files['file']
+                if not file.filename.endswith(('.xlsx', '.xls')):
+                    return redirect(request.url)
+
                 file_bytes = file.read()
-
                 students, availability_matrix = create_availability_matrix(file_bytes)
-                schedule, student_hours, visual_grid_data = run_schedule_optimization(
-                    students, availability_matrix
-                )
 
-                if schedule is None:
+            else:
+                # Primary: generate from student availability submissions
+                from pathlib import Path
+                csv_path = Path('availability_submissions') / f"availability_{selected_week_start.isoformat()}.csv"
+
+                if not csv_path.exists():
                     return render_template(
-                        'schedule.html',
-                        error="No feasible schedule could be found.",
-                        schedule=None,
-                        student_hours=None,
-                        visual_grid_data=None,
+                        'index.html',
                         available_weeks=get_next_n_mondays(),
-                        selected_week=selected_week_start,
-                        selected_week_end=selected_week_start + timedelta(days=6)
+                        default_week=get_upcoming_monday(),
+                        submission_counts=get_submission_counts(),
+                        error="No availability submissions found for this week. Students need to submit their availability first."
                     )
 
-                # Save schedule to log immediately so it can be loaded by publish/reset
-                save_schedule_log(schedule, selected_week_start)
+                students, availability_matrix = create_availability_matrix_from_csv(csv_path)
 
+            schedule, student_hours, visual_grid_data = run_schedule_optimization(
+                students, availability_matrix
+            )
+
+            if schedule is None:
                 return render_template(
                     'schedule.html',
-                    schedule=schedule,
-                    student_hours=student_hours,
-                    visual_grid_data=visual_grid_data,
-                    available_weeks=get_next_n_mondays(),
-                    selected_week=selected_week_start,
-                    selected_week_end=selected_week_start + timedelta(days=6)
-                )
-
-            except Exception as e:
-                return render_template(
-                    'schedule.html',
-                    error=f"An error occurred: {e}",
+                    error="No feasible schedule could be found.",
                     schedule=None,
                     student_hours=None,
                     visual_grid_data=None,
@@ -235,11 +320,37 @@ def upload_file():
                     selected_week_end=selected_week_start + timedelta(days=6)
                 )
 
-    # GET request - show upload form with week selector
+            # Save schedule to log immediately so it can be loaded by publish/reset
+            save_schedule_log(schedule, selected_week_start)
+
+            return render_template(
+                'schedule.html',
+                schedule=schedule,
+                student_hours=student_hours,
+                visual_grid_data=visual_grid_data,
+                available_weeks=get_next_n_mondays(),
+                selected_week=selected_week_start,
+                selected_week_end=selected_week_start + timedelta(days=6)
+            )
+
+        except Exception as e:
+            return render_template(
+                'schedule.html',
+                error=f"An error occurred: {e}",
+                schedule=None,
+                student_hours=None,
+                visual_grid_data=None,
+                available_weeks=get_next_n_mondays(),
+                selected_week=selected_week_start,
+                selected_week_end=selected_week_start + timedelta(days=6)
+            )
+
+    # GET request - show dashboard with week selector and submission counts
     return render_template(
         'index.html',
         available_weeks=get_next_n_mondays(),
-        default_week=get_upcoming_monday()
+        default_week=get_upcoming_monday(),
+        submission_counts=get_submission_counts()
     )
 
 @app.route('/availability')
