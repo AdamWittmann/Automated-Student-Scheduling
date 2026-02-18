@@ -35,4 +35,4 @@ manifest/
 # Schedule Logs
 schedule_logs/
 
-availability_submissions/*
+availability_submissions/
