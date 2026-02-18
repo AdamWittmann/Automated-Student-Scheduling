@@ -583,7 +583,8 @@ button:disabled {
 
                 fetch('/publish-to-teams', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ week_start: '{{ selected_week.isoformat() }}' })
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -619,7 +620,8 @@ button:disabled {
 
                 fetch('/reset-teams-schedule', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ week_start: '{{ selected_week.isoformat() }}' })
                 })
                 .then(response => response.json())
                 .then(data => {

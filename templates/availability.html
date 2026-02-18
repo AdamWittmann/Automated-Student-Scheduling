@@ -432,6 +432,14 @@
         <div class="user-name">👤 {{ user_name }}</div>
     </div>
 
+    <!-- Student Info -->
+    <div class="settings-card">
+        <label for="cwid">🪪 Your CWID</label>
+        <p class="hint">Enter your CWID so your submission can be matched to your record.</p>
+        <input type="text" id="cwid" class="max-hours-select" placeholder="CWID (e.g. 20012345)" required
+               style="max-width: 220px;" pattern="[0-9]+" inputmode="numeric">
+    </div>
+
     <!-- Week Selector -->
     <div class="settings-card">
         <label for="week_start">📅 Select Week to Submit For:</label>
@@ -492,8 +500,13 @@
 
     <!-- Submit -->
     <div class="submit-card">
-        <div class="selected-count">
-            <span id="shift-count">0</span> shifts selected
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div class="selected-count">
+                <span id="shift-count">0</span> shifts selected
+            </div>
+            <div class="selected-count">
+                Total available hours: <span id="total-hours" style="color: #6264a7; font-weight: 700;">0</span>
+            </div>
         </div>
         <button class="submit-btn" id="submit-btn" onclick="submitAvailability()">
             Submit Availability
@@ -551,6 +564,25 @@
 
     function updateCount() {
         document.getElementById('shift-count').textContent = selected.size;
+
+        // Compute total hours from selected shifts
+        let totalHours = 0;
+        selected.forEach(key => {
+            // key format: "Day|start-end" where start/end are floats
+            const timePart = key.split('|')[1];
+            if (timePart) {
+                const [startStr, endStr] = timePart.split('-');
+                const start = parseFloat(startStr);
+                const end = parseFloat(endStr);
+                if (!isNaN(start) && !isNaN(end)) {
+                    totalHours += (end - start);
+                }
+            }
+        });
+
+        const hoursEl = document.getElementById('total-hours');
+        // Display with one decimal if fractional, otherwise whole number
+        hoursEl.textContent = totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1);
     }
 
     function toggleShift(key, btnDesktop, btnMobile) {
@@ -753,8 +785,20 @@
     function submitAvailability() {
         const maxHours = document.getElementById('max-hours').value;
         const weekStart = document.getElementById('week_start').value;
+        const cwid = document.getElementById('cwid').value.trim();
         const shifts = Array.from(selected);
 
+        // Validation
+        if (!cwid) {
+            alert('Please enter your CWID.');
+            document.getElementById('cwid').focus();
+            return;
+        }
+        if (!/^\d+$/.test(cwid)) {
+            alert('CWID should contain only numbers.');
+            document.getElementById('cwid').focus();
+            return;
+        }
         if (shifts.length === 0) {
             alert('Please select at least one shift.');
             return;
@@ -770,6 +814,7 @@
             body: JSON.stringify({
                 max_hours: parseInt(maxHours),
                 week_start: weekStart,
+                cwid: cwid,
                 shifts: shifts
             })
         })

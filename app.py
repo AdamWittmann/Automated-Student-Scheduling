@@ -33,9 +33,6 @@ TEAM_ID = os.getenv("TEAM_ID")
 TENANT_ID = os.getenv("TENANT_ID")
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-# In-memory storage of last generated schedule (demo-safe)
-CURRENT_SCHEDULE = None
-SELECTED_WEEK_START = None  # Track which Monday was selected
 
 #ALLOW DOMAINS 
 #FOR PROD -> INCLUDE NEW DOMAIN
@@ -155,8 +152,6 @@ def get_next_n_mondays(n=8):
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
-    global CURRENT_SCHEDULE, SELECTED_WEEK_START
-
     if 'user' not in session:
         return render_template('login_landing.html', needs_auth=True)
     
@@ -187,9 +182,12 @@ def upload_file():
         # Get selected week from form (defaults to next Monday if not provided)
         selected_week_str = request.form.get('week_start')
         if selected_week_str:
-            SELECTED_WEEK_START = date.fromisoformat(selected_week_str)
+            selected_week_start = date.fromisoformat(selected_week_str)
         else:
-            SELECTED_WEEK_START = get_upcoming_monday()
+            selected_week_start = get_upcoming_monday()
+
+        # Store in session so publish/reset can reference it
+        session['selected_week_start'] = selected_week_start.isoformat()
 
         if file and file.filename.endswith(('.xlsx', '.xls')):
             try:
@@ -208,12 +206,12 @@ def upload_file():
                         student_hours=None,
                         visual_grid_data=None,
                         available_weeks=get_next_n_mondays(),
-                        selected_week=SELECTED_WEEK_START,
-                        selected_week_end=SELECTED_WEEK_START + timedelta(days=6) if SELECTED_WEEK_START else None
+                        selected_week=selected_week_start,
+                        selected_week_end=selected_week_start + timedelta(days=6)
                     )
 
-                # 🔑 store for later publishing
-                CURRENT_SCHEDULE = schedule
+                # Save schedule to log immediately so it can be loaded by publish/reset
+                save_schedule_log(schedule, selected_week_start)
 
                 return render_template(
                     'schedule.html',
@@ -221,8 +219,8 @@ def upload_file():
                     student_hours=student_hours,
                     visual_grid_data=visual_grid_data,
                     available_weeks=get_next_n_mondays(),
-                    selected_week=SELECTED_WEEK_START,
-                    selected_week_end=SELECTED_WEEK_START + timedelta(days=6) if SELECTED_WEEK_START else None
+                    selected_week=selected_week_start,
+                    selected_week_end=selected_week_start + timedelta(days=6)
                 )
 
             except Exception as e:
@@ -233,8 +231,8 @@ def upload_file():
                     student_hours=None,
                     visual_grid_data=None,
                     available_weeks=get_next_n_mondays(),
-                    selected_week=SELECTED_WEEK_START,
-                    selected_week_end=SELECTED_WEEK_START + timedelta(days=6) if SELECTED_WEEK_START else None
+                    selected_week=selected_week_start,
+                    selected_week_end=selected_week_start + timedelta(days=6)
                 )
 
     # GET request - show upload form with week selector
@@ -254,35 +252,142 @@ def availability():
     return render_template(
         'availability.html',
         user_name=session['user'].get('name', 'Student'),
-        shifts_config=shifts_config
+        shifts_config=shifts_config,
+        available_weeks=get_next_n_mondays(),
+        default_week=get_upcoming_monday()
     )
+
+
+@app.route('/submit-availability', methods=['POST'])
+def submit_availability():
+    if 'user' not in session:
+        return jsonify({"success": False, "message": "Not authenticated"}), 401
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "No data received"}), 400
+
+    week_start = data.get('week_start')
+    max_hours = data.get('max_hours', 20)
+    shifts = data.get('shifts', [])
+    cwid = data.get('cwid', '').strip()
+
+    if not shifts:
+        return jsonify({"success": False, "message": "No shifts selected"}), 400
+    if not cwid:
+        return jsonify({"success": False, "message": "CWID is required"}), 400
+    if not week_start:
+        return jsonify({"success": False, "message": "Week not selected"}), 400
+
+    user_claims = session.get('user', {})
+    student_name = user_claims.get('name', 'Unknown')
+    # preferred_username is the UPN (email) from Azure AD
+    email = user_claims.get('preferred_username', '') or user_claims.get('email', '')
+    if not email:
+        return jsonify({"success": False, "message": "Could not determine email from login. Try signing out and back in."}), 400
+
+    # Parse shifts into per-day time ranges
+    # Shift keys look like "Mon|7-9" or "Mon|7.0-9.0"
+    DAY_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+    day_shifts = {day: [] for day in DAY_ORDER}
+
+    for shift_key in shifts:
+        try:
+            day_part, time_part = shift_key.split('|')
+            start_str, end_str = time_part.split('-')
+            start_f = float(start_str)
+            end_f = float(end_str)
+
+            # Convert float hours to HH:MM:SS
+            def float_to_time(f):
+                h = int(f)
+                m = int(round((f - h) * 60))
+                return f"{h:02d}:{m:02d}:00"
+
+            time_range = f"{float_to_time(start_f)} - {float_to_time(end_f)}"
+            if day_part in day_shifts:
+                day_shifts[day_part].append(time_range)
+        except (ValueError, IndexError):
+            continue  # Skip malformed shift keys
+
+    # Sort each day's shifts chronologically
+    for day in DAY_ORDER:
+        day_shifts[day].sort()
+
+    # Build CSV row
+    import csv
+    import json
+    from pathlib import Path
+
+    csv_dir = Path('availability_submissions')
+    csv_dir.mkdir(exist_ok=True)
+    csv_path = csv_dir / f"availability_{week_start}.csv"
+
+    # Column headers
+    fieldnames = ['CWID', 'Student Name', 'Email', 'Max Hours',
+                  'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+                  'Friday', 'Saturday', 'Sunday']
+
+    day_to_col = {
+        'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday',
+        'Thu': 'Thursday', 'Fri': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday'
+    }
+
+    row = {
+        'CWID': cwid,
+        'Student Name': student_name,
+        'Email': email,
+        'Max Hours': max_hours,
+    }
+    for day_abbr, col_name in day_to_col.items():
+        ranges = day_shifts[day_abbr]
+        row[col_name] = json.dumps(ranges) if ranges else json.dumps([])
+
+    # Read existing rows, replace if same CWID + same week, else append
+    existing_rows = []
+    if csv_path.exists():
+        with open(csv_path, 'r', newline='') as f:
+            reader = csv.DictReader(f)
+            existing_rows = [r for r in reader if r.get('CWID') != cwid]
+
+    existing_rows.append(row)
+
+    with open(csv_path, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(existing_rows)
+
+    return jsonify({"success": True, "message": "Availability saved successfully"})
+
 
 @app.route('/publish-to-teams', methods=['POST'])
 @require_owner
 def publish_to_teams():
-    if CURRENT_SCHEDULE is None:
-        return jsonify({"success": False, "message": "No schedule to publish"}), 400
-    
-    if SELECTED_WEEK_START is None:
+    # Get week from POST body first, fall back to session
+    data = request.get_json(silent=True) or {}
+    week_start_str = data.get('week_start') or session.get('selected_week_start')
+
+    if not week_start_str:
         return jsonify({"success": False, "message": "No week selected"}), 400
+
+    selected_week = date.fromisoformat(week_start_str)
+    schedule = load_schedule_log(selected_week)
+
+    if schedule is None:
+        return jsonify({"success": False, "message": "No schedule found for this week. Generate one first."}), 400
 
     try:
         regenerate_weekly_schedule(
             team_id=TEAM_ID,
-            display_schedule=CURRENT_SCHEDULE,
-            week_monday=SELECTED_WEEK_START
+            display_schedule=schedule,
+            week_monday=selected_week
         )
 
-        week_end = SELECTED_WEEK_START + timedelta(days=6)
-        message = f"✅ Schedule published to Microsoft Teams for {SELECTED_WEEK_START.strftime('%m/%d/%Y')} - {week_end.strftime('%m/%d/%Y')}"
-
-        #Save schedule to logs
-        save_schedule_log(CURRENT_SCHEDULE, SELECTED_WEEK_START)
+        week_end = selected_week + timedelta(days=6)
+        message = f"✅ Schedule published to Microsoft Teams for {selected_week.strftime('%m/%d/%Y')} - {week_end.strftime('%m/%d/%Y')}"
 
         return jsonify({"success": True, "message": message})
 
-        
-        
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
@@ -290,10 +395,14 @@ def publish_to_teams():
 @app.route('/reset-teams-schedule', methods=['POST'])
 @require_owner
 def reset_teams_schedule():
-    if SELECTED_WEEK_START is None:
+    # Get week from POST body first, fall back to session
+    data = request.get_json(silent=True) or {}
+    week_start_str = data.get('week_start') or session.get('selected_week_start')
+
+    if not week_start_str:
         return jsonify({"success": False, "message": "No week selected"}), 400
     
-    monday = SELECTED_WEEK_START
+    monday = date.fromisoformat(week_start_str)
     sunday = monday + timedelta(days=6)
     
     try:
@@ -347,14 +456,13 @@ def history():
 
 @app.route('/history/<week_date>', methods=['GET'])
 def view_past_schedule(week_date):
-    global CURRENT_SCHEDULE, SELECTED_WEEK_START
     week_monday = date.fromisoformat(week_date)
     schedule = load_schedule_log(week_monday)
     if schedule is None:
         return redirect('/history')
     
-    CURRENT_SCHEDULE = schedule
-    SELECTED_WEEK_START = week_monday
+    # Store in session so publish/reset can reference it
+    session['selected_week_start'] = week_monday.isoformat()
     
     return render_template(
         'schedule.html',
