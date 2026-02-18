@@ -1,0 +1,803 @@
+{% extends "base.html" %}
+{% block head %}
+<title>Submit Availability</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #201f1f;
+        color: #f3f2f1;
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        min-height: 100vh;
+    }
+
+    .avail-container {
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    /* Title Card */
+    .title-card {
+        background: linear-gradient(135deg, #6264a7 0%, #4a4c7e 100%);
+        padding: 28px 32px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .title-card h1 {
+        margin: 0;
+        font-size: 1.6em;
+        font-weight: 700;
+        color: #fff;
+        border: none;
+        padding: 0;
+    }
+
+    .title-card .subtitle {
+        margin: 6px 0 0 0;
+        color: #d4d3f5;
+        font-size: 0.95em;
+        font-weight: 400;
+    }
+
+    .title-card .user-name {
+        margin-top: 12px;
+        display: inline-block;
+        background: rgba(255,255,255,0.15);
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 0.85em;
+        color: #fff;
+    }
+
+    /* Max Hours Card */
+    .settings-card {
+        background-color: #292828;
+        border-radius: 8px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .settings-card label {
+        font-weight: 600;
+        font-size: 0.95em;
+        color: #f3f2f1;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .settings-card .hint {
+        font-size: 0.82em;
+        color: #a8a6a4;
+        margin-bottom: 12px;
+    }
+
+    .max-hours-select {
+        width: 100%;
+        max-width: 200px;
+        padding: 10px 12px;
+        font-size: 15px;
+        border: 1px solid #4a4a4a;
+        border-radius: 6px;
+        background-color: #3c3c3c;
+        color: #f3f2f1;
+        cursor: pointer;
+    }
+
+    .max-hours-select:focus {
+        outline: none;
+        border-color: #6264a7;
+    }
+
+    /* Matrix Card */
+    .matrix-card {
+        background-color: #292828;
+        border-radius: 8px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .matrix-card .eyebrow {
+        text-transform: uppercase;
+        font-size: 0.72em;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        color: #6264a7;
+        margin-bottom: 4px;
+    }
+
+    .matrix-card h2 {
+        margin: 0 0 4px 0;
+        font-size: 1.15em;
+        color: #f3f2f1;
+    }
+
+    .matrix-card .description {
+        font-size: 0.85em;
+        color: #a8a6a4;
+        margin-bottom: 16px;
+    }
+
+    .legend {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8em;
+        color: #c8c6c4;
+    }
+
+    .legend-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+    }
+
+    .legend-dot.available {
+        background-color: #6264a7;
+    }
+
+    .legend-dot.unavailable {
+        background-color: #3c3c3c;
+        border: 1px solid #4a4a4a;
+    }
+
+    /* Desktop Matrix Grid */
+    .grid-section-label {
+        font-size: 0.8em;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #6264a7;
+        margin: 18px 0 8px 0;
+    }
+
+    .grid-section-label:first-child {
+        margin-top: 0;
+    }
+
+    .matrix-grid-weekday {
+        display: grid;
+        grid-template-columns: 120px repeat(5, 1fr);
+        gap: 4px;
+    }
+
+    .matrix-grid-weekend {
+        display: grid;
+        grid-template-columns: 120px repeat(2, 1fr);
+        gap: 4px;
+        max-width: 460px;
+    }
+
+    .matrix-header {
+        background-color: #3c3c3c;
+        padding: 14px 8px;
+        text-align: center;
+        font-weight: 700;
+        font-size: 0.95em;
+        color: #f3f2f1;
+        border-radius: 4px;
+    }
+
+    .matrix-header.corner {
+        background-color: transparent;
+    }
+
+    .matrix-time-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 8px;
+        font-size: 0.85em;
+        font-weight: 600;
+        color: #c8c6c4;
+        background-color: #333;
+        border-radius: 4px;
+        text-align: center;
+        line-height: 1.3;
+    }
+
+    .matrix-cell {
+        position: relative;
+    }
+
+    .matrix-cell .cell-btn {
+        width: 100%;
+        height: 100%;
+        min-height: 72px;
+        border: 2px solid #4a4a4a;
+        border-radius: 6px;
+        background-color: #3c3c3c;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+    }
+
+    .matrix-cell .cell-btn:hover {
+        border-color: #6264a7;
+        background-color: #444;
+    }
+
+    .matrix-cell .cell-btn.selected {
+        background-color: #6264a7;
+        border-color: #7b7dbd;
+        box-shadow: 0 0 8px rgba(98, 100, 167, 0.4);
+    }
+
+    .matrix-cell .cell-btn.selected::after {
+        content: '✓';
+        color: #fff;
+        font-size: 1.4em;
+        font-weight: 700;
+    }
+
+    .matrix-cell .cell-btn.no-shift {
+        background-color: #252525;
+        border-color: #333;
+        cursor: default;
+        opacity: 0.3;
+    }
+
+    .matrix-cell .cell-btn.no-shift:hover {
+        background-color: #252525;
+        border-color: #333;
+    }
+
+    /* Mobile Day-by-Day View */
+    .mobile-view {
+        display: none;
+    }
+
+    .day-card {
+        background-color: #333;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        overflow: hidden;
+    }
+
+    .day-card-header {
+        background: linear-gradient(135deg, #6264a7 0%, #4a4c7e 100%);
+        padding: 12px 16px;
+        font-weight: 700;
+        font-size: 0.95em;
+        color: #fff;
+    }
+
+    .day-card-body {
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .mobile-shift-btn {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border: 2px solid #4a4a4a;
+        border-radius: 6px;
+        background-color: #3c3c3c;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        color: #f3f2f1;
+        font-size: 0.9em;
+        font-weight: 500;
+    }
+
+    .mobile-shift-btn:hover {
+        border-color: #6264a7;
+        background-color: #444;
+    }
+
+    .mobile-shift-btn.selected {
+        background-color: #6264a7;
+        border-color: #7b7dbd;
+        box-shadow: 0 0 8px rgba(98, 100, 167, 0.4);
+    }
+
+    .mobile-shift-btn .check-mark {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+        flex-shrink: 0;
+    }
+
+    .mobile-shift-btn.selected .check-mark {
+        background-color: #fff;
+        border-color: #fff;
+        color: #6264a7;
+        font-weight: 700;
+        font-size: 0.8em;
+    }
+
+    /* Submit Area */
+    .submit-card {
+        background-color: #292828;
+        border-radius: 8px;
+        padding: 20px 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .selected-count {
+        font-size: 0.9em;
+        color: #a8a6a4;
+    }
+
+    .selected-count span {
+        color: #6264a7;
+        font-weight: 700;
+    }
+
+    .submit-btn {
+        background-color: #6264a7;
+        color: #fff;
+        border: none;
+        padding: 12px 32px;
+        border-radius: 6px;
+        font-size: 1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .submit-btn:hover {
+        background-color: #4a4c7e;
+    }
+
+    .submit-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .signout-link {
+        display: inline-block;
+        margin-top: 16px;
+        color: #a8a6a4;
+        font-size: 0.82em;
+        text-decoration: none;
+    }
+
+    .signout-link:hover {
+        color: #f3f2f1;
+    }
+
+    /* Responsive */
+    @media (max-width: 700px) {
+        body {
+            padding: 12px;
+        }
+
+        .desktop-view {
+            display: none;
+        }
+
+        .mobile-view {
+            display: block;
+        }
+
+        .title-card {
+            padding: 20px;
+        }
+
+        .title-card h1 {
+            font-size: 1.3em;
+        }
+
+        .submit-card {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .submit-btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="avail-container">
+
+    <!-- Title Card -->
+    <div class="title-card">
+        <h1>Submit Your Availability</h1>
+        <p class="subtitle">Select the shifts you're available to work this week. The scheduler will assign you based on coverage needs and fairness.</p>
+        <div class="user-name">👤 {{ user_name }}</div>
+    </div>
+
+    <!-- Week Selector -->
+    <div class="settings-card">
+        <label for="week_start">📅 Select Week to Submit For:</label>
+        <p class="hint">Choose which week you're submitting availability for.</p>
+        <select id="week_start" class="max-hours-select" style="max-width: 100%;">
+            {% for week in available_weeks %}
+                <option value="{{ week.monday.isoformat() }}"
+                        {% if week.monday == default_week %}selected{% endif %}>
+                    Week of {{ week.monday.strftime('%B %d, %Y') }}
+                    ({{ week.monday.strftime('%m/%d') }} - {{ week.sunday.strftime('%m/%d/%Y') }})
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Max Hours Setting -->
+    <div class="settings-card">
+        <label for="max-hours">⏱ Maximum Hours Per Week</label>
+        <p class="hint">Set the most hours you'd like to be scheduled. Default is 20.</p>
+        <select id="max-hours" class="max-hours-select">
+            <option value="5">5 hours</option>
+            <option value="10">10 hours</option>
+            <option value="15">15 hours</option>
+            <option value="20" selected>20 hours</option>
+        </select>
+    </div>
+
+    <!-- Availability Matrix -->
+    <div class="matrix-card">
+        <div class="eyebrow">Availability</div>
+        <h2>Shift Selection</h2>
+        <p class="description">Click cells to toggle your availability. Green = available.</p>
+
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-dot available"></div>
+                <span>Available</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-dot unavailable"></div>
+                <span>Not selected</span>
+            </div>
+        </div>
+
+        <!-- Desktop Grid -->
+        <div class="desktop-view">
+            <div class="grid-section-label">Weekdays</div>
+            <div class="matrix-grid-weekday" id="desktop-grid-weekday"></div>
+            <div class="grid-section-label">Weekend</div>
+            <div class="matrix-grid-weekend" id="desktop-grid-weekend"></div>
+        </div>
+
+        <!-- Mobile Day Cards -->
+        <div class="mobile-view" id="mobile-view">
+            <!-- Built by JS -->
+        </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="submit-card">
+        <div class="selected-count">
+            <span id="shift-count">0</span> shifts selected
+        </div>
+        <button class="submit-btn" id="submit-btn" onclick="submitAvailability()">
+            Submit Availability
+        </button>
+    </div>
+
+    <a href="/logout" class="signout-link">Sign out</a>
+</div>
+
+<script>
+    // Shift config from Python
+    const SHIFTS = {{ shifts_config | tojson | safe }};
+
+    // Organize shifts by day and collect unique time slots
+    const DAYS_ORDER = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const DAY_FULL = {
+        'Mon': 'Monday', 'Tue': 'Tuesday', 'Wed': 'Wednesday',
+        'Thu': 'Thursday', 'Fri': 'Friday', 'Sat': 'Saturday', 'Sun': 'Sunday'
+    };
+
+    // Get unique time slots (start-end pairs)
+    const timeSlotSet = new Map();
+    SHIFTS.forEach(s => {
+        const key = s[1] + '-' + s[2];
+        if (!timeSlotSet.has(key)) {
+            timeSlotSet.set(key, { start: s[1], end: s[2] });
+        }
+    });
+    const TIME_SLOTS = Array.from(timeSlotSet.values());
+
+    // Track which shifts exist (some days don't have all time slots)
+    const shiftExists = {};
+    SHIFTS.forEach(s => {
+        shiftExists[s[0] + '|' + s[1] + '-' + s[2]] = true;
+    });
+
+    // Track selections
+    const selected = new Set();
+
+    function formatTime(f) {
+        const h = Math.floor(f);
+        const m = Math.round((f - h) * 60);
+        const ampm = h >= 12 ? 'PM' : 'AM';
+        const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h);
+        return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
+    }
+
+    function formatTimeRange(start, end) {
+        return formatTime(start) + ' – ' + formatTime(end);
+    }
+
+    function shiftKey(day, start, end) {
+        return day + '|' + start + '-' + end;
+    }
+
+    function updateCount() {
+        document.getElementById('shift-count').textContent = selected.size;
+    }
+
+    function toggleShift(key, btnDesktop, btnMobile) {
+        if (selected.has(key)) {
+            selected.delete(key);
+        } else {
+            selected.add(key);
+        }
+
+        // Sync both views
+        if (btnDesktop) btnDesktop.classList.toggle('selected', selected.has(key));
+        if (btnMobile) btnMobile.classList.toggle('selected', selected.has(key));
+
+        // Also sync by data attribute
+        document.querySelectorAll(`[data-shift="${key}"]`).forEach(el => {
+            el.classList.toggle('selected', selected.has(key));
+            const check = el.querySelector('.check-mark');
+            if (check) check.textContent = selected.has(key) ? '✓' : '';
+        });
+
+        updateCount();
+    }
+
+    // Build Desktop Grids
+    function buildDesktopGrid() {
+        const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+        const WEEKEND = ['Sat', 'Sun'];
+
+        // Get unique time slots for weekdays only
+        const weekdaySlots = [];
+        const weekdaySlotSet = new Set();
+        SHIFTS.forEach(s => {
+            if (WEEKDAYS.includes(s[0])) {
+                const key = s[1] + '-' + s[2];
+                if (!weekdaySlotSet.has(key)) {
+                    weekdaySlotSet.add(key);
+                    weekdaySlots.push({ start: s[1], end: s[2] });
+                }
+            }
+        });
+
+        // Get unique time slots for weekend only
+        const weekendSlots = [];
+        const weekendSlotSet = new Set();
+        SHIFTS.forEach(s => {
+            if (WEEKEND.includes(s[0])) {
+                const key = s[1] + '-' + s[2];
+                if (!weekendSlotSet.has(key)) {
+                    weekendSlotSet.add(key);
+                    weekendSlots.push({ start: s[1], end: s[2] });
+                }
+            }
+        });
+
+        // Build weekday grid
+        const weekdayGrid = document.getElementById('desktop-grid-weekday');
+        weekdayGrid.innerHTML = '';
+
+        // Corner
+        const corner1 = document.createElement('div');
+        corner1.className = 'matrix-header corner';
+        corner1.textContent = 'Time';
+        weekdayGrid.appendChild(corner1);
+
+        // Day headers
+        WEEKDAYS.forEach(day => {
+            const header = document.createElement('div');
+            header.className = 'matrix-header';
+            header.textContent = day;
+            weekdayGrid.appendChild(header);
+        });
+
+        // Rows
+        weekdaySlots.forEach(slot => {
+            const label = document.createElement('div');
+            label.className = 'matrix-time-label';
+            label.innerHTML = formatTime(slot.start) + '<br>–<br>' + formatTime(slot.end);
+            weekdayGrid.appendChild(label);
+
+            WEEKDAYS.forEach(day => {
+                const cell = document.createElement('div');
+                cell.className = 'matrix-cell';
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const key = shiftKey(day, slot.start, slot.end);
+
+                if (shiftExists[key]) {
+                    btn.className = 'cell-btn';
+                    btn.dataset.shift = key;
+                    btn.title = DAY_FULL[day] + ' ' + formatTimeRange(slot.start, slot.end);
+                    btn.addEventListener('click', () => toggleShift(key, btn, null));
+                } else {
+                    btn.className = 'cell-btn no-shift';
+                    btn.disabled = true;
+                    btn.title = 'No shift';
+                }
+
+                cell.appendChild(btn);
+                weekdayGrid.appendChild(cell);
+            });
+        });
+
+        // Build weekend grid
+        const weekendGrid = document.getElementById('desktop-grid-weekend');
+        weekendGrid.innerHTML = '';
+
+        // Corner
+        const corner2 = document.createElement('div');
+        corner2.className = 'matrix-header corner';
+        corner2.textContent = 'Time';
+        weekendGrid.appendChild(corner2);
+
+        // Day headers
+        WEEKEND.forEach(day => {
+            const header = document.createElement('div');
+            header.className = 'matrix-header';
+            header.textContent = day;
+            weekendGrid.appendChild(header);
+        });
+
+        // Rows
+        weekendSlots.forEach(slot => {
+            const label = document.createElement('div');
+            label.className = 'matrix-time-label';
+            label.innerHTML = formatTime(slot.start) + '<br>–<br>' + formatTime(slot.end);
+            weekendGrid.appendChild(label);
+
+            WEEKEND.forEach(day => {
+                const cell = document.createElement('div');
+                cell.className = 'matrix-cell';
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                const key = shiftKey(day, slot.start, slot.end);
+
+                if (shiftExists[key]) {
+                    btn.className = 'cell-btn';
+                    btn.dataset.shift = key;
+                    btn.title = DAY_FULL[day] + ' ' + formatTimeRange(slot.start, slot.end);
+                    btn.addEventListener('click', () => toggleShift(key, btn, null));
+                } else {
+                    btn.className = 'cell-btn no-shift';
+                    btn.disabled = true;
+                    btn.title = 'No shift';
+                }
+
+                cell.appendChild(btn);
+                weekendGrid.appendChild(cell);
+            });
+        });
+    }
+
+    // Build Mobile View
+    function buildMobileView() {
+        const container = document.getElementById('mobile-view');
+        container.innerHTML = '';
+
+        DAYS_ORDER.forEach(day => {
+            const dayShifts = SHIFTS.filter(s => s[0] === day);
+            if (dayShifts.length === 0) return;
+
+            const card = document.createElement('div');
+            card.className = 'day-card';
+
+            const header = document.createElement('div');
+            header.className = 'day-card-header';
+            header.textContent = DAY_FULL[day];
+            card.appendChild(header);
+
+            const body = document.createElement('div');
+            body.className = 'day-card-body';
+
+            dayShifts.forEach(s => {
+                const key = shiftKey(s[0], s[1], s[2]);
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'mobile-shift-btn';
+                btn.dataset.shift = key;
+
+                const timeLabel = document.createElement('span');
+                timeLabel.textContent = formatTimeRange(s[1], s[2]);
+
+                const check = document.createElement('div');
+                check.className = 'check-mark';
+
+                btn.appendChild(timeLabel);
+                btn.appendChild(check);
+                btn.addEventListener('click', () => toggleShift(key, null, btn));
+
+                body.appendChild(btn);
+            });
+
+            card.appendChild(body);
+            container.appendChild(card);
+        });
+    }
+
+    // Submit
+    function submitAvailability() {
+        const maxHours = document.getElementById('max-hours').value;
+        const weekStart = document.getElementById('week_start').value;
+        const shifts = Array.from(selected);
+
+        if (shifts.length === 0) {
+            alert('Please select at least one shift.');
+            return;
+        }
+
+        const btn = document.getElementById('submit-btn');
+        btn.disabled = true;
+        btn.textContent = 'Submitting...';
+
+        fetch('/submit-availability', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                max_hours: parseInt(maxHours),
+                week_start: weekStart,
+                shifts: shifts
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                btn.textContent = '✅ Submitted!';
+                btn.style.backgroundColor = '#4CAF50';
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = 'Submit Availability';
+                    btn.style.backgroundColor = '';
+                }, 3000);
+            } else {
+                alert('Error: ' + data.message);
+                btn.disabled = false;
+                btn.textContent = 'Submit Availability';
+            }
+        })
+        .catch(err => {
+            alert('Failed to submit: ' + err);
+            btn.disabled = false;
+            btn.textContent = 'Submit Availability';
+        });
+    }
+
+    // Init
+    buildDesktopGrid();
+    buildMobileView();
+</script>
+{% endblock %}
