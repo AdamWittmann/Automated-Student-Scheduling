@@ -1,17 +1,266 @@
 <!-- base.html -->
- <!-- Template for every other template to confirm auth before anything -->
+<!-- Template for every other template to confirm auth before anything -->
 <!doctype html>
 <html>
 <head>
     <script src="https://res.cdn.office.net/teams-js/2.19.0/js/MicrosoftTeams.min.js"></script>
+    <style>
+        /* ========================================
+           THEME SYSTEM — CSS Variables
+           Default = dark (your existing theme)
+           ======================================== */
+        :root {
+            /* Backgrounds */
+            --bg-primary: #201f1f;
+            --bg-card: #292828;
+            --bg-input: #3c3c3c;
+            --bg-hover: #444444;
+
+            /* Text */
+            --text-primary: #f3f2f1;
+            --text-secondary: #c8c6c4;
+            --text-muted: #a8a6a4;
+
+            /* Accent (Teams purple) */
+            --accent: #6264a7;
+            --accent-hover: #4a4c7e;
+            --accent-gradient: linear-gradient(135deg, #6264a7 0%, #4a4c7e 100%);
+            --accent-text: #ffffff;
+            --accent-subtle-bg: rgba(98, 100, 167, 0.15);
+
+            /* Borders & Dividers */
+            --border: #4a4a4a;
+            --border-light: #3c3c3c;
+
+            /* Shadows */
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+
+            /* Status Colors */
+            --success-bg: rgba(76, 175, 80, 0.15);
+            --success-text: #81c784;
+            --success-border: rgba(76, 175, 80, 0.3);
+            --success-solid: #4CAF50;
+            --warning-bg: rgba(255, 152, 0, 0.12);
+            --warning-text: #ffb74d;
+            --warning-border: rgba(255, 152, 0, 0.25);
+            --error-bg: rgba(244, 67, 54, 0.12);
+            --error-text: #ef9a9a;
+            --error-border: rgba(244, 67, 54, 0.3);
+            --error-solid: #f44336;
+
+            /* Notification (schedule.html popup) */
+            --notif-bg: #fff;
+            --notif-title: #292828;
+            --notif-message: #666;
+            --notif-close: #999;
+            --notif-close-hover: #333;
+            --notif-success-border: #4CAF50;
+            --notif-error-border: #f44336;
+
+            /* Shift matrix specific */
+            --cell-unselected: #3c3c3c;
+            --cell-selected: #6264a7;
+            --cell-selected-border: #7b7dbd;
+            --cell-selected-shadow: rgba(98, 100, 167, 0.4);
+            --cell-disabled: #252525;
+            --cell-disabled-border: #333333;
+
+            /* Spinner */
+            --spinner-track: rgba(255, 255, 255, 0.3);
+            --spinner-head: #6264a7;
+
+            /* History page */
+            --history-hover: rgba(98, 100, 167, 0.1);
+            --history-border: #3c3c3c;
+            --history-label: #f3f2f1;
+            --history-sub: #a8a6a4;
+
+            /* Schedule page (schedule.css) */
+            --shell-bg: radial-gradient(circle at top left, #3b3c81 0, #201f1f 45%, #111111 100%);
+            --card-bg: radial-gradient(circle at top left, #323232 0, #252525 60%, #1b1a1a 100%);
+            --card-glow: radial-gradient(circle at top right, rgba(98, 100, 167, 0.12), transparent 55%);
+            --accent-sub: #b3b0ff;
+            --table-header-bg: #323131;
+            --table-corner-bg: #2f2f2f;
+            --table-cell-bg: #1f1f1f;
+            --table-row-alt: #262626;
+            --table-row-alt-subtle: #212121;
+            --table-row-border: #2e2e2e;
+            --legend-chip-bg: #2b2b2b;
+            --unstaffed-bg: #5c3030;
+            --unstaffed-text: #ffcccc;
+        }
+
+        /* ========================================
+           LIGHT THEME (Teams "default")
+           ======================================== */
+        [data-theme="default"] {
+            --bg-primary: #f5f5f5;
+            --bg-card: #ffffff;
+            --bg-input: #f0f0f0;
+            --bg-hover: #e8e8e8;
+
+            --text-primary: #242424;
+            --text-secondary: #616161;
+            --text-muted: #858585;
+
+            --accent: #6264a7;
+            --accent-hover: #4a4c7e;
+            --accent-gradient: linear-gradient(135deg, #6264a7 0%, #4a4c7e 100%);
+            --accent-text: #ffffff;
+            --accent-subtle-bg: rgba(98, 100, 167, 0.08);
+
+            --border: #e0e0e0;
+            --border-light: #eeeeee;
+
+            --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.12);
+
+            --success-bg: rgba(76, 175, 80, 0.1);
+            --success-text: #2e7d32;
+            --success-border: rgba(76, 175, 80, 0.3);
+            --success-solid: #4CAF50;
+            --warning-bg: rgba(255, 152, 0, 0.08);
+            --warning-text: #e65100;
+            --warning-border: rgba(255, 152, 0, 0.3);
+            --error-bg: rgba(244, 67, 54, 0.08);
+            --error-text: #c62828;
+            --error-border: rgba(244, 67, 54, 0.3);
+            --error-solid: #f44336;
+
+            --notif-bg: #fff;
+            --notif-title: #242424;
+            --notif-message: #616161;
+            --notif-close: #999;
+            --notif-close-hover: #333;
+
+            --cell-unselected: #f0f0f0;
+            --cell-selected: #6264a7;
+            --cell-selected-border: #7b7dbd;
+            --cell-selected-shadow: rgba(98, 100, 167, 0.3);
+            --cell-disabled: #fafafa;
+            --cell-disabled-border: #e0e0e0;
+
+            --spinner-track: rgba(0, 0, 0, 0.1);
+            --spinner-head: #6264a7;
+
+            --history-hover: #f5f5ff;
+            --history-border: #e8e8e8;
+            --history-label: #242424;
+            --history-sub: #666666;
+
+            /* Schedule page (schedule.css) */
+            --shell-bg: #f5f5f5;
+            --card-bg: #ffffff;
+            --card-glow: none;
+            --accent-sub: #6264a7;
+            --table-header-bg: #f0f0f0;
+            --table-corner-bg: #f5f5f5;
+            --table-cell-bg: #ffffff;
+            --table-row-alt: #fafafa;
+            --table-row-alt-subtle: #f8f8f8;
+            --table-row-border: #eeeeee;
+            --legend-chip-bg: #f0f0f0;
+            --unstaffed-bg: #ffebee;
+            --unstaffed-text: #c62828;
+        }
+
+        /* ========================================
+           HIGH CONTRAST THEME
+           ======================================== */
+        [data-theme="contrast"] {
+            --bg-primary: #000000;
+            --bg-card: #1a1a1a;
+            --bg-input: #000000;
+            --bg-hover: #333333;
+
+            --text-primary: #ffffff;
+            --text-secondary: #ffffff;
+            --text-muted: #ffffff;
+
+            --accent: #ffff00;
+            --accent-hover: #cccc00;
+            --accent-gradient: linear-gradient(135deg, #ffff00 0%, #cccc00 100%);
+            --accent-text: #000000;
+            --accent-subtle-bg: rgba(255, 255, 0, 0.15);
+
+            --border: #ffffff;
+            --border-light: #ffffff;
+
+            --shadow-sm: none;
+            --shadow-md: none;
+
+            --success-bg: rgba(0, 255, 0, 0.15);
+            --success-text: #00ff00;
+            --success-border: #00ff00;
+            --success-solid: #00ff00;
+            --warning-bg: rgba(255, 255, 0, 0.15);
+            --warning-text: #ffff00;
+            --warning-border: #ffff00;
+            --error-bg: rgba(255, 0, 0, 0.15);
+            --error-text: #ff6666;
+            --error-border: #ff0000;
+            --error-solid: #ff0000;
+
+            --notif-bg: #1a1a1a;
+            --notif-title: #ffffff;
+            --notif-message: #ffffff;
+            --notif-close: #ffffff;
+            --notif-close-hover: #ffff00;
+
+            --cell-unselected: #000000;
+            --cell-selected: #ffff00;
+            --cell-selected-border: #ffffff;
+            --cell-selected-shadow: none;
+            --cell-disabled: #0a0a0a;
+            --cell-disabled-border: #333333;
+
+            --spinner-track: rgba(255, 255, 255, 0.3);
+            --spinner-head: #ffff00;
+
+            --history-hover: rgba(255, 255, 0, 0.1);
+            --history-border: #ffffff;
+            --history-label: #ffffff;
+            --history-sub: #ffffff;
+
+            /* Schedule page (schedule.css) */
+            --shell-bg: #000000;
+            --card-bg: #1a1a1a;
+            --card-glow: none;
+            --accent-sub: #ffff00;
+            --table-header-bg: #1a1a1a;
+            --table-corner-bg: #0a0a0a;
+            --table-cell-bg: #000000;
+            --table-row-alt: #0a0a0a;
+            --table-row-alt-subtle: #050505;
+            --table-row-border: #ffffff;
+            --legend-chip-bg: #000000;
+            --unstaffed-bg: #330000;
+            --unstaffed-text: #ff6666;
+        }
+    </style>
     {% block head %}{% endblock %}
 </head>
 <body data-needs-auth="{{ needs_auth|default(false)|lower }}">
     {% block content %}{% endblock %}
 
     <script>
+        // Theme detection: works inside Teams and falls back gracefully outside
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme || 'dark');
+        }
+
         microsoftTeams.app.initialize().then(() => {
-            // Inside Teams
+            // Inside Teams — get initial theme and listen for changes
+            microsoftTeams.app.getContext().then((context) => {
+                applyTheme(context.app.theme);
+            });
+            microsoftTeams.app.registerOnThemeChangeHandler((theme) => {
+                applyTheme(theme);
+            });
+
+            // Auth check for Teams
             fetch('/check-auth')
                 .then(r => r.json())
                 .then(data => {
@@ -28,7 +277,7 @@
                     }
                 });
         }).catch(() => {
-            // Not in Teams - use regular redirect
+            // Not in Teams — keep dark theme (no data-theme attribute = :root defaults)
             if (document.body.dataset.needsAuth === 'true') {
                 window.location.href = '/login';
             }

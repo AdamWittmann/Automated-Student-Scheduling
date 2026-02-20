@@ -6,11 +6,11 @@
     <style>
 /* Week Info Banner */
 .week-info-banner {
-    background: linear-gradient(135deg, #6264a7 0%, #4a4c7e 100%);
+    background: var(--accent-gradient);
     padding: 20px;
     border-radius: 8px;
     margin-bottom: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    box-shadow: var(--shadow-sm);
 }
 
 .week-info-content {
@@ -25,7 +25,7 @@
 
 .week-info-banner h2 {
     margin: 0;
-    color: #fff;
+    color: var(--accent-text);
     font-size: 1.3em;
     font-weight: 600;
 }
@@ -60,8 +60,8 @@ button:disabled {
 .spinner {
     width: 14px;
     height: 14px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: #fff;
+    border: 2px solid var(--spinner-track);
+    border-top-color: var(--accent-text);
     border-radius: 50%;
     animation: spin 0.6s linear infinite;
     display: inline-block;
@@ -76,10 +76,10 @@ button:disabled {
     position: fixed;
     top: 20px;
     right: 20px;
-    background: #fff;
+    background: var(--notif-bg);
     border-radius: 8px;
     padding: 20px 24px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: var(--shadow-md);
     z-index: 10000;
     min-width: 300px;
     max-width: 500px;
@@ -92,11 +92,11 @@ button:disabled {
 }
 
 .notification.success {
-    border-left: 4px solid #4CAF50;
+    border-left: 4px solid var(--notif-success-border);
 }
 
 .notification.error {
-    border-left: 4px solid #f44336;
+    border-left: 4px solid var(--notif-error-border);
 }
 
 .notification-content {
@@ -117,12 +117,12 @@ button:disabled {
 .notification-title {
     font-weight: 600;
     margin-bottom: 4px;
-    color: #292828;
+    color: var(--notif-title);
 }
 
 .notification-message {
     font-size: 14px;
-    color: #666;
+    color: var(--text-secondary);
     line-height: 1.4;
 }
 
@@ -130,7 +130,7 @@ button:disabled {
     background: none;
     border: none;
     font-size: 20px;
-    color: #999;
+    color: var(--notif-close);
     cursor: pointer;
     padding: 0;
     width: 24px;
@@ -139,7 +139,7 @@ button:disabled {
 }
 
 .notification-close:hover {
-    color: #333;
+    color: var(--notif-close-hover);
 }
 
 @keyframes slideIn {

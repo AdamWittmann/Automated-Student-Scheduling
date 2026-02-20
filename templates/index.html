@@ -5,8 +5,8 @@
     /* Teams-like Dark Theme */
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #201f1f;
-        color: #f3f2f1;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
         margin: 0;
         padding: 20px;
         display: flex;
@@ -16,10 +16,10 @@
     }
 
     .app-card {
-        background-color: #292828;
+        background-color: var(--bg-card);
         padding: 30px;
         border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        box-shadow: var(--shadow-md);
         width: 100%;
         max-width: 540px;
         text-align: center;
@@ -30,8 +30,8 @@
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        background-color: #6264a7;
-        color: #ffffff;
+        background-color: var(--accent);
+        color: var(--accent-text);
         padding: 8px 16px;
         border-radius: 999px;
         text-decoration: none;
@@ -43,21 +43,21 @@
     }
 
     .history-btn:hover {
-        background-color: #4a4c7e;
+        background-color: var(--accent-hover);
     }
 
     h1 {
-        color: #f3f2f1;
+        color: var(--text-primary);
         font-size: 1.8em;
         margin-bottom: 20px;
-        border-bottom: 1px solid #3c3c3c;
+        border-bottom: 1px solid var(--border-light);
         padding-bottom: 10px;
     }
 
     .week-selector {
         margin: 20px 0;
         padding: 20px;
-        background: #3c3c3c;
+        background: var(--bg-input);
         border-radius: 6px;
         text-align: left;
     }
@@ -66,7 +66,7 @@
         display: block;
         margin-bottom: 10px;
         font-weight: 600;
-        color: #f3f2f1;
+        color: var(--text-primary);
         font-size: 0.95em;
     }
 
@@ -74,16 +74,16 @@
         width: 100%;
         padding: 12px;
         font-size: 15px;
-        border: 1px solid #4a4a4a;
+        border: 1px solid var(--border);
         border-radius: 4px;
-        background-color: #292828;
-        color: #f3f2f1;
+        background-color: var(--bg-card);
+        color: var(--text-primary);
         cursor: pointer;
     }
 
     .week-selector select:focus {
         outline: none;
-        border-color: #6264a7;
+        border-color: var(--accent);
     }
 
     /* Submission indicator */
@@ -97,21 +97,21 @@
     }
 
     .submission-badge.has-data {
-        background-color: rgba(76, 175, 80, 0.15);
-        color: #81c784;
-        border: 1px solid rgba(76, 175, 80, 0.3);
+        background-color: var(--success-bg);
+        color: var(--success-text);
+        border: 1px solid var(--success-border);
     }
 
     .submission-badge.no-data {
-        background-color: rgba(255, 152, 0, 0.12);
-        color: #ffb74d;
-        border: 1px solid rgba(255, 152, 0, 0.25);
+        background-color: var(--warning-bg);
+        color: var(--warning-text);
+        border: 1px solid var(--warning-border);
     }
 
     /* Primary action button */
     .primary-btn {
-        background-color: #6264a7;
-        color: #ffffff;
+        background-color: var(--accent);
+        color: var(--accent-text);
         border: none;
         padding: 14px 20px;
         border-radius: 6px;
@@ -124,7 +124,7 @@
     }
 
     .primary-btn:hover {
-        background-color: #4a4c7e;
+        background-color: var(--accent-hover);
     }
 
     .primary-btn:disabled {
@@ -134,16 +134,16 @@
 
     .info-text {
         font-size: 0.9em;
-        color: #c8c6c4;
+        color: var(--text-secondary);
         margin-bottom: 15px;
         line-height: 1.4;
     }
 
     /* Error message */
     .error-banner {
-        background-color: rgba(244, 67, 54, 0.12);
-        border: 1px solid rgba(244, 67, 54, 0.3);
-        color: #ef9a9a;
+        background-color: var(--error-bg);
+        border: 1px solid var(--error-border);
+        color: var(--error-text);
         padding: 12px 16px;
         border-radius: 6px;
         margin-bottom: 16px;
@@ -158,7 +158,7 @@
         align-items: center;
         gap: 12px;
         margin: 24px 0 16px 0;
-        color: #666;
+        color: var(--text-secondary);
         font-size: 0.8em;
         text-transform: uppercase;
         letter-spacing: 0.06em;
@@ -170,7 +170,7 @@
         content: '';
         flex: 1;
         height: 1px;
-        background-color: #3c3c3c;
+        background-color: var(--bg-input);
     }
 
     /* Collapsible upload section */
@@ -180,8 +180,8 @@
         justify-content: center;
         gap: 6px;
         background: none;
-        border: 1px solid #4a4a4a;
-        color: #a8a6a4;
+        border: 1px solid var(--border);
+        color: var(--text-muted);
         padding: 10px 16px;
         border-radius: 6px;
         cursor: pointer;
@@ -192,8 +192,8 @@
     }
 
     .upload-toggle:hover {
-        border-color: #6264a7;
-        color: #f3f2f1;
+        border-color: var(--accent);
+        color: var(--text-primary);
     }
 
     .upload-toggle .chevron {
@@ -210,7 +210,7 @@
         overflow: hidden;
         transition: max-height 0.3s ease, padding 0.3s ease;
         padding: 0 20px;
-        background: #3c3c3c;
+        background: var(--bg-input);
         border-radius: 6px;
         margin-top: 8px;
     }
@@ -222,16 +222,16 @@
 
     .upload-section p {
         font-size: 0.85em;
-        color: #a8a6a4;
+        color: var(--text-muted);
         margin: 0 0 12px 0;
         text-align: left;
     }
 
     /* File Input */
     input[type="file"] {
-        color: #f3f2f1;
-        background-color: #292828;
-        border: 1px solid #4a4a4a;
+        color: var(--text-primary);
+        background-color: var(--bg-card);
+        border: 1px solid var(--border);
         padding: 10px;
         border-radius: 3px;
         width: calc(100% - 22px);
@@ -240,8 +240,8 @@
     }
 
     .upload-submit {
-        background-color: #4a4c7e;
-        color: #ffffff;
+        background-color: var(--accent-hover);
+        color: var(--accent-text);
         border: none;
         padding: 10px 20px;
         border-radius: 4px;
@@ -254,7 +254,7 @@
     }
 
     .upload-submit:hover {
-        background-color: #6264a7;
+        background-color: var(--accent);
     }
 </style>
 {% endblock %}
