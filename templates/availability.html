@@ -5,8 +5,8 @@
 <style>
     body {
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        background-color: #201f1f;
-        color: #f3f2f1;
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
         margin: 0;
         padding: 20px;
         display: flex;
@@ -23,25 +23,25 @@
 
     /* Title Card */
     .title-card {
-        background: linear-gradient(135deg, #6264a7 0%, #4a4c7e 100%);
+        background: var(--accent-gradient);
         padding: 28px 32px;
         border-radius: 8px;
         margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        box-shadow: var(--shadow-md);
     }
 
     .title-card h1 {
         margin: 0;
         font-size: 1.6em;
         font-weight: 700;
-        color: #fff;
+        color: var(--accent-text);
         border: none;
         padding: 0;
     }
 
     .title-card .subtitle {
         margin: 6px 0 0 0;
-        color: #d4d3f5;
+        color: rgba(255, 255, 255, 0.8);
         font-size: 0.95em;
         font-weight: 400;
     }
@@ -53,29 +53,29 @@
         padding: 4px 12px;
         border-radius: 999px;
         font-size: 0.85em;
-        color: #fff;
+        color: var(--accent-text);
     }
 
     /* Max Hours Card */
     .settings-card {
-        background-color: #292828;
+        background-color: var(--bg-card);
         border-radius: 8px;
         padding: 20px 24px;
         margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        box-shadow: var(--shadow-sm);
     }
 
     .settings-card label {
         font-weight: 600;
         font-size: 0.95em;
-        color: #f3f2f1;
+        color: var(--text-primary);
         display: block;
         margin-bottom: 8px;
     }
 
     .settings-card .hint {
         font-size: 0.82em;
-        color: #a8a6a4;
+        color: var(--text-muted);
         margin-bottom: 12px;
     }
 
@@ -84,25 +84,25 @@
         max-width: 200px;
         padding: 10px 12px;
         font-size: 15px;
-        border: 1px solid #4a4a4a;
+        border: 1px solid var(--border);
         border-radius: 6px;
-        background-color: #3c3c3c;
-        color: #f3f2f1;
+        background-color: var(--bg-input);
+        color: var(--text-primary);
         cursor: pointer;
     }
 
     .max-hours-select:focus {
         outline: none;
-        border-color: #6264a7;
+        border-color: var(--accent);
     }
 
     /* Matrix Card */
     .matrix-card {
-        background-color: #292828;
+        background-color: var(--bg-card);
         border-radius: 8px;
         padding: 20px 24px;
         margin-bottom: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        box-shadow: var(--shadow-sm);
     }
 
     .matrix-card .eyebrow {
@@ -110,19 +110,19 @@
         font-size: 0.72em;
         font-weight: 700;
         letter-spacing: 0.08em;
-        color: #6264a7;
+        color: var(--accent);
         margin-bottom: 4px;
     }
 
     .matrix-card h2 {
         margin: 0 0 4px 0;
         font-size: 1.15em;
-        color: #f3f2f1;
+        color: var(--text-primary);
     }
 
     .matrix-card .description {
         font-size: 0.85em;
-        color: #a8a6a4;
+        color: var(--text-muted);
         margin-bottom: 16px;
     }
 
@@ -138,7 +138,7 @@
         align-items: center;
         gap: 6px;
         font-size: 0.8em;
-        color: #c8c6c4;
+        color: var(--text-secondary);
     }
 
     .legend-dot {
@@ -148,12 +148,12 @@
     }
 
     .legend-dot.available {
-        background-color: #6264a7;
+        background-color: var(--accent);
     }
 
     .legend-dot.unavailable {
-        background-color: #3c3c3c;
-        border: 1px solid #4a4a4a;
+        background-color: var(--bg-input);
+        border: 1px solid var(--border);
     }
 
     /* Desktop Matrix Grid */
@@ -162,7 +162,7 @@
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-        color: #6264a7;
+        color: var(--accent);
         margin: 18px 0 8px 0;
     }
 
@@ -184,12 +184,12 @@
     }
 
     .matrix-header {
-        background-color: #3c3c3c;
+        background-color: var(--bg-input);
         padding: 14px 8px;
         text-align: center;
         font-weight: 700;
         font-size: 0.95em;
-        color: #f3f2f1;
+        color: var(--text-primary);
         border-radius: 4px;
     }
 
@@ -204,8 +204,8 @@
         padding: 10px 8px;
         font-size: 0.85em;
         font-weight: 600;
-        color: #c8c6c4;
-        background-color: #333;
+        color: var(--text-secondary);
+        background-color: var(--bg-input);
         border-radius: 4px;
         text-align: center;
         line-height: 1.3;
@@ -219,9 +219,9 @@
         width: 100%;
         height: 100%;
         min-height: 72px;
-        border: 2px solid #4a4a4a;
+        border: 2px solid var(--border);
         border-radius: 6px;
-        background-color: #3c3c3c;
+        background-color: var(--bg-input);
         cursor: pointer;
         transition: all 0.15s ease;
         display: flex;
@@ -231,33 +231,33 @@
     }
 
     .matrix-cell .cell-btn:hover {
-        border-color: #6264a7;
-        background-color: #444;
+        border-color: var(--accent);
+        background-color: var(--bg-hover);
     }
 
     .matrix-cell .cell-btn.selected {
-        background-color: #6264a7;
-        border-color: #7b7dbd;
-        box-shadow: 0 0 8px rgba(98, 100, 167, 0.4);
+        background-color: var(--accent);
+        border-color: var(--cell-selected-border);
+        box-shadow: 0 0 8px var(--cell-selected-shadow);
     }
 
     .matrix-cell .cell-btn.selected::after {
         content: '✓';
-        color: #fff;
+        color: var(--accent-text);
         font-size: 1.4em;
         font-weight: 700;
     }
 
     .matrix-cell .cell-btn.no-shift {
-        background-color: #252525;
-        border-color: #333;
+        background-color: var(--cell-disabled);
+        border-color: var(--cell-disabled-border);
         cursor: default;
         opacity: 0.3;
     }
 
     .matrix-cell .cell-btn.no-shift:hover {
-        background-color: #252525;
-        border-color: #333;
+        background-color: var(--cell-disabled);
+        border-color: var(--cell-disabled-border);
     }
 
     /* Mobile Day-by-Day View */
@@ -266,18 +266,18 @@
     }
 
     .day-card {
-        background-color: #333;
+        background-color: var(--bg-input);
         border-radius: 8px;
         margin-bottom: 12px;
         overflow: hidden;
     }
 
     .day-card-header {
-        background: linear-gradient(135deg, #6264a7 0%, #4a4c7e 100%);
+        background: var(--accent-gradient);
         padding: 12px 16px;
         font-weight: 700;
         font-size: 0.95em;
-        color: #fff;
+        color: var(--accent-text);
     }
 
     .day-card-body {
@@ -292,32 +292,32 @@
         align-items: center;
         justify-content: space-between;
         padding: 14px 16px;
-        border: 2px solid #4a4a4a;
+        border: 2px solid var(--border);
         border-radius: 6px;
-        background-color: #3c3c3c;
+        background-color: var(--bg-input);
         cursor: pointer;
         transition: all 0.15s ease;
-        color: #f3f2f1;
+        color: var(--text-primary);
         font-size: 0.9em;
         font-weight: 500;
     }
 
     .mobile-shift-btn:hover {
-        border-color: #6264a7;
-        background-color: #444;
+        border-color: var(--accent);
+        background-color: var(--bg-hover);
     }
 
     .mobile-shift-btn.selected {
-        background-color: #6264a7;
-        border-color: #7b7dbd;
-        box-shadow: 0 0 8px rgba(98, 100, 167, 0.4);
+        background-color: var(--accent);
+        border-color: var(--cell-selected-border);
+        box-shadow: 0 0 8px var(--cell-selected-shadow);
     }
 
     .mobile-shift-btn .check-mark {
         width: 22px;
         height: 22px;
         border-radius: 50%;
-        border: 2px solid #666;
+        border: 2px solid var(--border);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -326,19 +326,19 @@
     }
 
     .mobile-shift-btn.selected .check-mark {
-        background-color: #fff;
-        border-color: #fff;
-        color: #6264a7;
+        background-color: var(--accent-text);
+        border-color: var(--accent-text);
+        color: var(--accent);
         font-weight: 700;
         font-size: 0.8em;
     }
 
     /* Submit Area */
     .submit-card {
-        background-color: #292828;
+        background-color: var(--bg-card);
         border-radius: 8px;
         padding: 20px 24px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        box-shadow: var(--shadow-sm);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -348,17 +348,17 @@
 
     .selected-count {
         font-size: 0.9em;
-        color: #a8a6a4;
+        color: var(--text-muted);
     }
 
     .selected-count span {
-        color: #6264a7;
+        color: var(--accent);
         font-weight: 700;
     }
 
     .submit-btn {
-        background-color: #6264a7;
-        color: #fff;
+        background-color: var(--accent);
+        color: var(--accent-text);
         border: none;
         padding: 12px 32px;
         border-radius: 6px;
@@ -369,7 +369,7 @@
     }
 
     .submit-btn:hover {
-        background-color: #4a4c7e;
+        background-color: var(--accent-hover);
     }
 
     .submit-btn:disabled {
@@ -380,13 +380,13 @@
     .signout-link {
         display: inline-block;
         margin-top: 16px;
-        color: #a8a6a4;
+        color: var(--text-muted);
         font-size: 0.82em;
         text-decoration: none;
     }
 
     .signout-link:hover {
-        color: #f3f2f1;
+        color: var(--text-primary);
     }
 
     /* Responsive */
@@ -505,7 +505,7 @@
                 <span id="shift-count">0</span> shifts selected
             </div>
             <div class="selected-count">
-                Total available hours: <span id="total-hours" style="color: #6264a7; font-weight: 700;">0</span>
+                Total available hours: <span id="total-hours" style="color: var(--accent); font-weight: 700;">0</span>
             </div>
         </div>
         <button class="submit-btn" id="submit-btn" onclick="submitAvailability()">
