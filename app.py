@@ -1,4 +1,5 @@
-# app.py
+# app.py — Main Flask application: authentication, routing, schedule generation, and Teams integration
+
 from schedule_log import save_schedule_log, load_schedule_log, list_saved_schedules
 from flask import Flask, render_template, request, redirect, jsonify, session
 from scheduling_logic import create_availability_matrix, run_schedule_optimization
@@ -12,7 +13,7 @@ import requests
 from msal import ConfidentialClientApplication
 from functools import wraps
 
-#Restricting Graph API call routes to be blocked until owner verification is complete
+# Decorator: block Graph API routes unless the user is an authenticated Team Owner
 def require_owner(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -25,17 +26,19 @@ def require_owner(f):
 
 load_dotenv()
 app = Flask(__name__)
+# DEPLOYMENT: update FLASK_SECRET_KEY in .env with a strong random value
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "some-random-secret")
 app.config['SESSION_COOKIE_SECURE'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 
+# DEPLOYMENT: all four values must be set in .env for the target Azure AD app registration
 TEAM_ID = os.getenv("TEAM_ID")
 TENANT_ID = os.getenv("TENANT_ID")
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
-#ALLOW DOMAINS 
-#FOR PROD -> INCLUDE NEW DOMAIN
+# DEPLOYMENT: add your production domain to allowed frame-ancestors / CSP when moving off ngrok
+# Inject permissive headers so the app can be embedded inside MS Teams iframes
 @app.after_request
 def add_headers(resp):
     resp.headers.pop('X-Frame-Options', None)
@@ -43,25 +46,28 @@ def add_headers(resp):
     resp.headers['ngrok-skip-browser-warning'] = 'true'
     return resp
 
-#MS teams blocks pop ups... even though trying to redirect to MS Auth page
-#This application will handle accessing through a normal browser and through teams differently, but essentially the same
+# Teams blocks pop-ups, so auth uses a silent redirect flow rather than a new window.
+# Browser access and Teams access use the same backend but different client-side entry points.
 
+# --- Teams iframe auth flow ---
 
-#Teams auth section
+# Serve the page that kicks off the Teams auth popup
 @app.route('/auth-start')
 def auth_start():
     return render_template('auth_start.html')
 
+# Serve the page that closes the Teams auth popup after login completes
 @app.route('/auth-end')
 def auth_end():
     return render_template('auth_end.html')
 
+# API: let the Teams client check if the session is already authenticated
 @app.route('/check-auth')
 def check_auth():
     return jsonify({"authenticated": 'user' in session})
-#END TEAMS AUTH SECTION
 
-# Authentication |for prod-> change urls
+# --- MSAL (Microsoft Authentication Library) setup ---
+# DEPLOYMENT: TENANT_ID, CLIENT_ID, CLIENT_SECRET must match the Azure AD app registration on the new server
 msal_app = ConfidentialClientApplication(
     CLIENT_ID,
     authority=f"https://login.microsoftonline.com/{TENANT_ID}",
@@ -69,7 +75,8 @@ msal_app = ConfidentialClientApplication(
 )
 
 
-#Directs to MS login page
+# Redirect the user to the Microsoft login page; redirect_uri is built dynamically
+# DEPLOYMENT: ensure the /callback redirect URI is registered in Azure AD > App registrations > Authentication
 @app.route('/login')
 def login():
     redirect_uri = request.url_root.rstrip('/') + '/callback'
@@ -82,7 +89,7 @@ def login():
     )
     return redirect(auth_url)
 
-#Part of auth, tells app how to finish sign in
+# OAuth2 callback: exchange the auth code for a token and store user claims in the session
 @app.route('/callback')
 def callback():
     code = request.args.get('code')
@@ -105,14 +112,15 @@ def callback():
     else:
         print("❌ Login failed:", result.get('error_description'))
         return "Login failed", 401
-#Logout
+# Clear the session and redirect to the landing page
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
 
 
-#Check user status for redirects. Supervisors should be marked as a Team Owner within MS Teams
+# Query Graph API for the user's role in the Team; returns "owner", "member", or None
+# Supervisors must be marked as Team Owners in MS Teams to access admin routes
 def get_user_role(user_id, team_id):
     token = get_graph_token()
     resp = requests.get(
@@ -130,7 +138,7 @@ def get_user_role(user_id, team_id):
     return None
 
 
-#For base page get the upcoming mondays (scheduling week goes monday-sunday)
+# Build a list of the next n Monday–Sunday week ranges for the week selector dropdown
 def get_next_n_mondays(n=8):
     """Generate list of upcoming Monday dates with their Sunday end dates"""
     weeks = []
@@ -147,8 +155,8 @@ def get_next_n_mondays(n=8):
     return weeks
 
 
+# Count how many students have submitted availability for each week (used by dashboard badges)
 def get_submission_counts():
-    """Return a dict mapping week ISO dates to the number of student submissions."""
     from pathlib import Path
     import csv
 
@@ -171,20 +179,9 @@ def get_submission_counts():
     return counts
 
 
+# Parse the student-submitted availability CSV into the matrix format the optimizer expects.
+# Mirrors create_availability_matrix (Excel path) but reads from the CSV written by /submit-availability.
 def create_availability_matrix_from_csv(csv_path):
-    """
-    Parse a student availability CSV into the same (students, availability_matrix, student_max_hours)
-    format that create_availability_matrix returns from an Excel file, plus per-student hour caps.
-
-    CSV columns: CWID, Student Name, Email, Max Hours, Monday..Sunday
-    Each day column contains a JSON array of time ranges like:
-        ["07:00:00 - 09:00:00", "12:00:00 - 15:00:00"]
-
-    Returns:
-        students: list of student names
-        availability_matrix: dict of {student_name: {(day, start, end): 0|1}}
-        student_max_hours: dict of {student_name: max_hours_float}
-    """
     import csv
     import json
     import re
@@ -195,11 +192,8 @@ def create_availability_matrix_from_csv(csv_path):
         'Thursday': 'Thu', 'Friday': 'Fri', 'Saturday': 'Sat', 'Sunday': 'Sun'
     }
 
+    # Extract time ranges from a CSV cell; handles both clean JSON and malformed strings
     def parse_time_ranges(raw):
-        """
-        Robustly extract time ranges from a cell that may contain malformed JSON.
-        Returns a list of (start_float, end_float) tuples.
-        """
         if not raw or raw.strip() in ('', '[]'):
             return []
 
@@ -279,6 +273,8 @@ def create_availability_matrix_from_csv(csv_path):
 
 
 
+# Main dashboard: GET shows the week selector, POST runs the schedule optimizer
+# Owners see the admin dashboard; members are redirected to the availability form
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
     if 'user' not in session:
@@ -393,6 +389,7 @@ def upload_file():
         submission_counts=get_submission_counts()
     )
 
+# Render the shift-selection grid where students mark their weekly availability
 @app.route('/availability')
 def availability():
     if 'user' not in session:
@@ -409,6 +406,7 @@ def availability():
     )
 
 
+# API: receive a student's shift selections and persist them to the weekly availability CSV
 @app.route('/submit-availability', methods=['POST'])
 def submit_availability():
     if 'user' not in session:
@@ -511,6 +509,7 @@ def submit_availability():
     return jsonify({"success": True, "message": "Availability saved successfully"})
 
 
+# API (owner-only): push the generated schedule to MS Teams Shifts via Graph API
 @app.route('/publish-to-teams', methods=['POST'])
 @require_owner
 def publish_to_teams():
@@ -543,6 +542,7 @@ def publish_to_teams():
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
 
+# API (owner-only): delete all assigned and open shifts for a given week from MS Teams
 @app.route('/reset-teams-schedule', methods=['POST'])
 @require_owner
 def reset_teams_schedule():
@@ -600,11 +600,13 @@ def reset_teams_schedule():
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
+# List all previously saved schedule weeks
 @app.route('/history', methods=['GET'])
 def history():
     saved_weeks = list_saved_schedules()
     return render_template('history.html', saved_weeks=saved_weeks, timedelta=timedelta)
 
+# Load and display a specific past schedule by its Monday date
 @app.route('/history/<week_date>', methods=['GET'])
 def view_past_schedule(week_date):
     week_monday = date.fromisoformat(week_date)

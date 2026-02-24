@@ -1,13 +1,13 @@
-# scheduling_logic.py
+# scheduling_logic.py — Core scheduling engine using Google OR-Tools CP-SAT solver.
+# Two-phase optimization: (1) maximize shift coverage, (2) minimize hour unfairness across students.
 
 import pandas as pd
 import io
 import re
 from ortools.sat.python import cp_model
 
-# --- Configuration from Notebooks ---
-
-# Define the set of shifts (Day, Start_Hour, End_Hour, Required_Staff)
+# DEPLOYMENT: adjust shift times, days, and required staff counts to match the new site's needs
+# Format: (Day abbreviation, Start hour as float, End hour as float, Required staff count)
 SHIFTS_CONFIG = [
     # Mon-Fri Shifts (7.25-9, 9-12, 12-15, 15-17, 17-19)
     ("Mon", 7.25, 9, 3), ("Mon", 9, 12, 4), ("Mon", 12, 15, 3), ("Mon", 15, 17, 4), ("Mon", 17, 19, 3),
@@ -18,14 +18,13 @@ SHIFTS_CONFIG = [
     # Weekend Shifts
     ("Sat", 10, 14, 2), ("Sun", 10, 14, 2),
 ]
+# DEPLOYMENT: update if your institution allows more/fewer weekly hours per student
 MAX_WEEKLY_HOURS = 20
-SCALE = 100  # For converting float hours to integers for CP-SAT
+SCALE = 100  # CP-SAT requires integers; multiply float hours by SCALE for precision
 
 
-# --- Utility Functions for Data Preprocessing (from AvailabilityMatrix.ipynb) ---
-
+# Convert a time string like "09:00:00" to a float hour (9.0)
 def time_str_to_float(time_str):
-    """Converts a time string (HH:MM:SS) to a float hour (e.g., 9:00:00 -> 9.0)"""
     time_str = time_str.strip()
     if not time_str:
         return 0.0
@@ -45,8 +44,8 @@ def time_str_to_float(time_str):
     return hours + minutes / 60.0 + seconds / 3600.0
 
 
+# Parse a list-like string from an Excel cell into individual time range strings
 def parse_cell(raw_data):
-    """Parses the list-like string from the Excel cell into a list of time range strings."""
     if not raw_data:
         return []
     raw_data = str(raw_data)
@@ -57,8 +56,8 @@ def parse_cell(raw_data):
     return time_ranges
 
 
+# Read an uploaded Excel file and build the per-student availability matrix for the optimizer
 def create_availability_matrix(excel_file_bytes):
-    """Reads the Excel file and creates the availability matrix."""
     df = pd.read_excel(io.BytesIO(excel_file_bytes))
     # Filter out any rows where STUDENT NAME might be missing
     df = df.dropna(subset=['STUDENT NAME'])
@@ -96,19 +95,11 @@ def create_availability_matrix(excel_file_bytes):
     return students, availability_matrix
 
 
-# --- Core Scheduling Logic (from SchedulingTest 1.ipynb) ---
-
+# Run the two-phase CP-SAT optimizer:
+#   Phase 1 — maximize total shift coverage
+#   Phase 2 — with coverage locked, minimize the gap between most- and least-scheduled students
+# Returns (display_schedule, student_hours, visual_grid_data) or (None, None, None) if infeasible
 def run_schedule_optimization(students, availability_matrix, student_max_hours=None):
-    """
-    Runs the two-phase CP-SAT optimization to create the final schedule.
-    Returns the scheduled assignments, the total hours per student, and the visual grid data.
-
-    Args:
-        students: List of student names.
-        availability_matrix: Dict of {student: {shift_id: 0|1}}.
-        student_max_hours: Optional dict of {student_name: max_hours (int/float)}.
-                           If None or a student is missing, falls back to MAX_WEEKLY_HOURS.
-    """
 
     shifts_with_id = []
     shift_lengths = {}

@@ -1,3 +1,5 @@
+# graph_scheduler.py — Create, delete, and sync shifts in MS Teams via the Graph API
+
 import requests
 from datetime import date, datetime, timedelta
 from dateutil.parser import isoparse
@@ -7,6 +9,7 @@ from graph_auth import get_graph_token
 
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
+# DEPLOYMENT: change this to the local timezone of the scheduling site
 TIMEZONE = pytz.timezone("America/New_York")
 
 DAY_MAP = {
@@ -14,15 +17,18 @@ DAY_MAP = {
     "Thu": 3, "Fri": 4, "Sat": 5, "Sun": 6
 }
 
+# Return the date of the upcoming Monday (or today if it is Monday)
 def get_upcoming_monday(today=None):
     if today is None:
         today = date.today()
     return today + timedelta(days=(7 - today.weekday()) % 7)
 
 
+# Return (Monday, Sunday) date pair for a given week
 def get_week_window(monday):
     return monday, monday + timedelta(days=6)
 
+# Fetch all team members and return a {displayName: userId} map
 def get_team_members(team_id, token):
     resp = requests.get(
         f"{GRAPH_BASE}/teams/{team_id}/members",
@@ -35,6 +41,7 @@ def get_team_members(team_id, token):
         for m in resp.json()["value"]
         if "userId" in m
     }
+# Retrieve all assigned shifts for the team from Graph API
 def get_all_shifts(team_id, token):
     resp = requests.get(
         f"{GRAPH_BASE}/teams/{team_id}/schedule/shifts",
@@ -43,8 +50,8 @@ def get_all_shifts(team_id, token):
     resp.raise_for_status()
     return resp.json()["value"]
 
+# Retrieve all open (unassigned/claimable) shifts for the team
 def get_all_open_shifts(team_id, token):
-    """Get all open shifts for the team"""
     resp = requests.get(
         f"{GRAPH_BASE}/teams/{team_id}/schedule/openShifts",
         headers={"Authorization": f"Bearer {token}"}
@@ -52,13 +59,8 @@ def get_all_open_shifts(team_id, token):
     resp.raise_for_status()
     return resp.json()["value"]
 
+# Delete all open shifts falling within the given Monday–Sunday range; returns (deleted, failed)
 def delete_open_shifts_for_week(team_id, token, week_start, week_end):
-    """
-    Delete all open shifts within the specified week range.
-    
-    Returns:
-        tuple: (deleted_count, failed_count)
-    """
     try:
         open_shifts = get_all_open_shifts(team_id, token)
     except Exception as e:
@@ -99,13 +101,8 @@ def delete_open_shifts_for_week(team_id, token, week_start, week_end):
             continue
     
     return deleted_count, failed_count
+# Delete all assigned shifts falling within the given Monday–Sunday range; returns (deleted, failed)
 def delete_shifts_for_week(team_id, token, week_start, week_end):
-    """
-    Delete all shifts within the specified week range.
-    
-    Returns:
-        tuple: (deleted_count, failed_count)
-    """
     shifts = get_all_shifts(team_id, token)
     deleted_count = 0
     failed_count = 0
@@ -141,6 +138,7 @@ def delete_shifts_for_week(team_id, token, week_start, week_end):
             continue
     
     return deleted_count, failed_count
+# Convert a shift string like "Mon 7.25-9.0" into timezone-aware ISO start/end datetimes
 def build_shift_datetimes(shift_str, week_monday):
     day, time_range = shift_str.split(" ")
     start_f, end_f = map(float, time_range.split("-"))
@@ -164,7 +162,7 @@ def build_shift_datetimes(shift_str, week_monday):
 
     return start_dt.isoformat(), end_dt.isoformat()
 
-#Shift Creation
+# Create a single assigned shift for a specific user in MS Teams Shifts
 def create_shift(team_id, token, user_id, start_dt, end_dt):
     payload = {
         "userId": user_id,
@@ -186,18 +184,8 @@ def create_shift(team_id, token, user_id, start_dt, end_dt):
     )
     resp.raise_for_status()
 
+# Create an open (unassigned) shift that any team member can claim; used for understaffed slots
 def create_open_shift(team_id, token, start_dt, end_dt, slot_count=1, notes=""):
-    """
-    Create an open shift that any team member can pick up.
-    
-    Args:
-        team_id: MS Teams team ID
-        token: Auth token
-        start_dt: Shift start datetime (ISO format)
-        end_dt: Shift end datetime (ISO format)
-        slot_count: Number of open slots available (default 1)
-        notes: Optional notes for the shift
-    """
     payload = {
         "sharedOpenShift": {
             "startDateTime": start_dt,
@@ -219,16 +207,8 @@ def create_open_shift(team_id, token, start_dt, end_dt, slot_count=1, notes=""):
     resp.raise_for_status()
     return resp.json()
 
+# Publish a full week's schedule to Teams: clears old shifts, creates assigned + open shifts
 def regenerate_weekly_schedule(team_id, display_schedule, week_monday=None):
-    """
-    Generate schedule for a specific week.
-    Posts open shifts for any understaffed positions.
-    
-    Args:
-        team_id: MS Teams team ID
-        display_schedule: Schedule data from optimizer
-        week_monday: Date object for the Monday of target week (defaults to upcoming Monday)
-    """
     token = get_graph_token()
 
     if week_monday is None:

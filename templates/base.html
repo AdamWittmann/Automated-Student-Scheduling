@@ -1,5 +1,4 @@
-<!-- base.html -->
-<!-- Template for every other template to confirm auth before anything -->
+<!-- base.html — Root template: loads Teams SDK, defines the theme system, and handles auth gating -->
 <!doctype html>
 <html>
 <head>
@@ -246,13 +245,14 @@
     {% block content %}{% endblock %}
 
     <script>
-        // Theme detection: works inside Teams and falls back gracefully outside
+        // Apply a Teams theme name ("default", "dark", "contrast") to the document root
         function applyTheme(theme) {
             document.documentElement.setAttribute('data-theme', theme || 'dark');
         }
 
+        // Detect environment: if inside Teams, sync theme and trigger auth popup;
+        // otherwise fall back to dark theme and redirect to /login if auth is needed.
         microsoftTeams.app.initialize().then(() => {
-            // Inside Teams — get initial theme and listen for changes
             microsoftTeams.app.getContext().then((context) => {
                 applyTheme(context.app.theme);
             });

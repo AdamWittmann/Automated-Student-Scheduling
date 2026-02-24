@@ -441,7 +441,7 @@ button:disabled {
 {% endblock %}
 {% block scripts %}
 <script>
-    // Notification System
+    // Show a slide-in toast notification (success or error) that auto-hides after 5 seconds
     function showNotification(title, message, type = 'success') {
         const notification = document.getElementById('notification');
         const icon = document.getElementById('notification-icon');
@@ -458,6 +458,7 @@ button:disabled {
         }, 5000);
     }
 
+    // Animate the notification off-screen and reset its CSS classes
     function hideNotification() {
         const notification = document.getElementById('notification');
         notification.classList.add('hiding');
@@ -480,6 +481,7 @@ button:disabled {
                 const shiftKeys = visualGridData.shift_keys;
                 const assignments = visualGridData.assignments;
 
+                // Convert a shift key like "Mon 7.25-9.00" into a readable label "Mon 7:15 - 9:00"
                 function formatShiftTime(shiftKey) {
                     const parts = shiftKey.split(' ');
                     const day = parts[0];

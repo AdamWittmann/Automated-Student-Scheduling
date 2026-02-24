@@ -1,3 +1,4 @@
+<!-- auth_end.html — Loaded after OAuth callback; tells Teams the auth popup succeeded so it can close -->
 <!doctype html>
 <html>
 <head>
@@ -5,6 +6,7 @@
 </head>
 <body>
 <script>
+    // Signal to Teams that authentication completed successfully, closing the popup
     microsoftTeams.app.initialize().then(() => {
         microsoftTeams.authentication.notifySuccess();
     });

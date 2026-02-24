@@ -546,6 +546,7 @@
     // Track selections
     const selected = new Set();
 
+    // Convert a float hour (e.g. 13.5) to a display string like "1:30 PM"
     function formatTime(f) {
         const h = Math.floor(f);
         const m = Math.round((f - h) * 60);
@@ -554,14 +555,17 @@
         return h12 + ':' + String(m).padStart(2, '0') + ' ' + ampm;
     }
 
+    // Format a start–end pair into a readable range like "7:15 AM – 9:00 AM"
     function formatTimeRange(start, end) {
         return formatTime(start) + ' – ' + formatTime(end);
     }
 
+    // Build a unique key like "Mon|7.25-9" used to track shift selection state
     function shiftKey(day, start, end) {
         return day + '|' + start + '-' + end;
     }
 
+    // Recompute and display the selected shift count and total available hours
     function updateCount() {
         document.getElementById('shift-count').textContent = selected.size;
 
@@ -585,6 +589,7 @@
         hoursEl.textContent = totalHours % 1 === 0 ? totalHours : totalHours.toFixed(1);
     }
 
+    // Toggle a shift on/off and sync the selected state across desktop and mobile views
     function toggleShift(key, btnDesktop, btnMobile) {
         if (selected.has(key)) {
             selected.delete(key);
@@ -606,7 +611,7 @@
         updateCount();
     }
 
-    // Build Desktop Grids
+    // Build the desktop weekday + weekend shift grids from SHIFTS_CONFIG
     function buildDesktopGrid() {
         const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
         const WEEKEND = ['Sat', 'Sun'];
@@ -736,7 +741,7 @@
         });
     }
 
-    // Build Mobile View
+    // Build the mobile day-card view (one card per day with shift toggle buttons)
     function buildMobileView() {
         const container = document.getElementById('mobile-view');
         container.innerHTML = '';
@@ -781,7 +786,7 @@
         });
     }
 
-    // Submit
+    // Validate inputs and POST the student's selected shifts to /submit-availability
     function submitAvailability() {
         const maxHours = document.getElementById('max-hours').value;
         const weekStart = document.getElementById('week_start').value;

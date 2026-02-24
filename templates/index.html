@@ -311,6 +311,7 @@
 </div>
 
 <script>
+    // Update the submission count badge and enable/disable the Generate button based on the selected week
     function updateSubmissionBadge() {
         const select = document.getElementById('week_start');
         const option = select.options[select.selectedIndex];
@@ -329,6 +330,7 @@
         }
     }
 
+    // Toggle the collapsible manual Excel upload section open/closed
     function toggleUpload() {
         const section = document.getElementById('upload-section');
         const toggle = document.getElementById('upload-toggle');

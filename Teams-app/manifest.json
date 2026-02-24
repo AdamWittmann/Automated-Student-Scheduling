@@ -24,10 +24,12 @@
     "outline": "outline.png"
   },
   "accentColor": "#FFFFFF",
+  "_DEPLOYMENT_NOTE_validDomains": "Replace ngrok domain with the production hostname",
   "validDomains": [
     "your-ngrok-domain.ngrok.io",
     "teams.microsoft.com"
   ],
+  "_DEPLOYMENT_NOTE_staticTabs": "Update contentUrl and websiteUrl to the production domain",
   "staticTabs": [
     {
       "entityId": "tab1",
