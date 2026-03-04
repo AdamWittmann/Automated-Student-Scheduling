@@ -437,7 +437,7 @@ def download_schedule():
             item['required'],
             item['assigned_count'],
             item['assigned_students'],
-            format_shift_time(item['shift'])
+            item['shift']
         ])
 
     output.seek(0)
