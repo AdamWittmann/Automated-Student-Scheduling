@@ -1,11 +1,14 @@
 # graph_scheduler.py — Create, delete, and sync shifts in MS Teams via the Graph API
 
 import requests
+import logging
 from datetime import date, datetime, timedelta
 from dateutil.parser import isoparse
 import pytz
 
 from graph_auth import get_graph_token
+
+logger = logging.getLogger(__name__)
 
 
 GRAPH_BASE = "https://graph.microsoft.com/v1.0"
@@ -64,7 +67,7 @@ def delete_open_shifts_for_week(team_id, token, week_start, week_end):
     try:
         open_shifts = get_all_open_shifts(team_id, token)
     except Exception as e:
-        print(f"⚠️ Could not fetch open shifts: {e}")
+        logger.error("Could not fetch open shifts: %s", e)
         return 0, 0
     
     deleted_count = 0
@@ -80,7 +83,6 @@ def delete_open_shifts_for_week(team_id, token, week_start, week_end):
                     "Content-Type": "application/json"
                 }
                 
-                # Include eTag to prevent conflicts
                 if "@odata.etag" in shift:
                     headers["If-Match"] = shift["@odata.etag"]
                 
@@ -92,14 +94,19 @@ def delete_open_shifts_for_week(team_id, token, week_start, week_end):
                 deleted_count += 1
                 
         except requests.exceptions.HTTPError as e:
-            print(f"❌ Failed to delete open shift {shift.get('id')}: {e.response.status_code}")
+            status = e.response.status_code
+            if status == 429:
+                logger.warning("Rate limited (429) deleting open shift %s", shift.get('id'))
+            else:
+                logger.error("Failed to delete open shift %s: HTTP %s", shift.get('id'), status)
             failed_count += 1
             continue
         except Exception as e:
-            print(f"❌ Unexpected error deleting open shift {shift.get('id')}: {e}")
+            logger.exception("Unexpected error deleting open shift %s", shift.get('id'))
             failed_count += 1
             continue
     
+    logger.info("Open shift delete complete: %d deleted, %d failed", deleted_count, failed_count)
     return deleted_count, failed_count
 # Delete all assigned shifts falling within the given Monday–Sunday range; returns (deleted, failed)
 def delete_shifts_for_week(team_id, token, week_start, week_end):
@@ -117,7 +124,6 @@ def delete_shifts_for_week(team_id, token, week_start, week_end):
                     "Content-Type": "application/json"
                 }
                 
-                # Include eTag to prevent conflicts
                 if "@odata.etag" in shift:
                     headers["If-Match"] = shift["@odata.etag"]
                 
@@ -129,14 +135,19 @@ def delete_shifts_for_week(team_id, token, week_start, week_end):
                 deleted_count += 1
                 
         except requests.exceptions.HTTPError as e:
-            print(f"❌ Failed to delete shift {shift.get('id')}: {e.response.status_code}")
+            status = e.response.status_code
+            if status == 429:
+                logger.warning("Rate limited (429) deleting shift %s", shift.get('id'))
+            else:
+                logger.error("Failed to delete shift %s: HTTP %s", shift.get('id'), status)
             failed_count += 1
             continue
         except Exception as e:
-            print(f"❌ Unexpected error deleting shift {shift.get('id')}: {e}")
+            logger.exception("Unexpected error deleting shift %s", shift.get('id'))
             failed_count += 1
             continue
     
+    logger.info("Assigned shift delete complete: %d deleted, %d failed", deleted_count, failed_count)
     return deleted_count, failed_count
 # Convert a shift string like "Mon 7.25-9.0" into timezone-aware ISO start/end datetimes
 def build_shift_datetimes(shift_str, week_monday):
@@ -220,10 +231,10 @@ def regenerate_weekly_schedule(team_id, display_schedule, week_monday=None):
 
     # Delete existing shifts and open shifts for this week
     deleted, failed = delete_shifts_for_week(team_id, token, week_monday, sunday)
-    print(f"🧹 Cleared {deleted} assigned shifts for week of {week_monday.strftime('%m/%d/%Y')}")
+    logger.info("Cleared %d assigned shifts for week of %s", deleted, week_monday.strftime('%m/%d/%Y'))
     
     deleted_open, failed_open = delete_open_shifts_for_week(team_id, token, week_monday, sunday)
-    print(f"🧹 Cleared {deleted_open} open shifts for week of {week_monday.strftime('%m/%d/%Y')}")
+    logger.info("Cleared %d open shifts for week of %s", deleted_open, week_monday.strftime('%m/%d/%Y'))
 
     # Create new shifts and track understaffed positions
     created_count = 0
@@ -243,7 +254,7 @@ def regenerate_weekly_schedule(team_id, display_schedule, week_monday=None):
 
             for student in students:
                 if student not in user_map:
-                    print(f"⚠️ Unknown Teams user: {student}")
+                    logger.warning("Unknown Teams user skipped during publish: %s", student)
                     continue
 
                 create_shift(
@@ -268,9 +279,9 @@ def regenerate_weekly_schedule(team_id, display_schedule, week_monday=None):
                     notes=notes
                 )
                 open_shifts_count += 1
-                print(f"📌 Created open shift for {item['shift']} ({unfilled_slots} slots)")
+                logger.info("Created open shift for %s (%d slot(s))", item['shift'], unfilled_slots)
             except Exception as e:
-                print(f"❌ Failed to create open shift for {item['shift']}: {e}")
+                logger.error("Failed to create open shift for %s: %s", item['shift'], e)
     
-    print(f"✅ Created {created_count} assigned shifts for week of {week_monday.strftime('%m/%d/%Y')}")
-    print(f"📌 Created {open_shifts_count} open shifts for understaffed positions")
+    logger.info("Publish complete for week of %s: %d assigned shifts, %d open shifts created",
+                week_monday.strftime('%m/%d/%Y'), created_count, open_shifts_count)

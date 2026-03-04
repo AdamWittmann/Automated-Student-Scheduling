@@ -14,6 +14,17 @@ import csv
 import requests
 from msal import ConfidentialClientApplication
 from functools import wraps
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s — %(message)s',
+    handlers=[
+        logging.FileHandler('scheduler.log'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Decorator: block Graph API routes unless the user is an authenticated Team Owner
 def require_owner(f):
@@ -105,14 +116,14 @@ def callback():
     
     if 'access_token' in result:
         session['user'] = result.get('id_token_claims')
-        print("✅ Logged in as:", session['user'].get('name', 'unknown'))
+        logger.info("Login successful: %s", session['user'].get('name', 'unknown'))
         
         # If in Teams popup, close it; otherwise redirect normally
         if request.args.get('state') == 'teams':
             return redirect('/auth-end')
         return redirect('/')
     else:
-        print("❌ Login failed:", result.get('error_description'))
+        logger.error("Login failed: %s", result.get('error_description'))
         return "Login failed", 401
 # Clear the session and redirect to the landing page
 @app.route('/logout')
@@ -131,12 +142,14 @@ def get_user_role(user_id, team_id):
     )
     resp.raise_for_status()
     members = resp.json()["value"]
-    print(f"🔍 Looking for user_id: {user_id}")
+    logger.info("Role lookup for user_id: %s", user_id)
     for member in members:
-        print(f"   Team member: {member.get('displayName')} → userId: {member.get('userId')} → roles: {member.get('roles', [])}")
         if member.get("userId") == user_id:
             roles = member.get("roles", [])
-            return "owner" if "owner" in roles else "member"
+            role = "owner" if "owner" in roles else "member"
+            logger.info("User %s resolved to role: %s", member.get('displayName'), role)
+            return role
+    logger.warning("User %s not found in team members list", user_id)
     return None
 
 
@@ -286,7 +299,7 @@ def upload_file():
     if 'role' not in session:
         user_id = session['user'].get('oid')
         role = get_user_role(user_id, TEAM_ID)
-        print(f"👤 {session['user'].get('name')} → role: {role} → oid: {user_id}")
+        logger.info("User %s authenticated with role: %s", session['user'].get('name'), role)
         session['role'] = role
 
     # Students go to availability form
@@ -342,14 +355,13 @@ def upload_file():
 
                 students, availability_matrix, student_max_hours = create_availability_matrix_from_csv(csv_path)
 
+            logger.info("Running optimization for week %s with %d students", selected_week_start, len(students))
             schedule, student_hours, visual_grid_data = run_schedule_optimization(
                 students, availability_matrix, student_max_hours=student_max_hours
             )
-            for item in schedule:
-                item['shift'] = format_shift_time(item['shift'])
-
 
             if schedule is None:
+                logger.warning("Optimization returned no feasible schedule for week %s", selected_week_start)
                 return render_template(
                     'schedule.html',
                     error="No feasible schedule could be found.",
@@ -362,6 +374,13 @@ def upload_file():
                 )
 
             # Save schedule to log immediately so it can be loaded by publish/reset
+            for item in schedule:
+                item['shift'] = format_shift_time(item['shift'])
+            unstaffed = [i['shift'] for i in schedule if i['assigned_students'] == 'UNSTAFFED']
+            if unstaffed:
+                logger.warning("Schedule has %d unstaffed shifts: %s", len(unstaffed), unstaffed)
+            else:
+                logger.info("Schedule fully staffed for week %s", selected_week_start)
             save_schedule_log(schedule, selected_week_start)
             
 
@@ -376,6 +395,7 @@ def upload_file():
             )
 
         except Exception as e:
+            logger.exception("Schedule generation failed for week %s", selected_week_start)
             return render_template(
                 'schedule.html',
                 error=f"An error occurred: {e}",
@@ -566,6 +586,7 @@ def publish_to_teams():
         return jsonify({"success": False, "message": "No schedule found for this week. Generate one first."}), 400
 
     try:
+        logger.info("Publishing schedule to Teams for week %s", selected_week)
         regenerate_weekly_schedule(
             team_id=TEAM_ID,
             display_schedule=schedule,
@@ -574,10 +595,11 @@ def publish_to_teams():
 
         week_end = selected_week + timedelta(days=6)
         message = f"✅ Schedule published to Microsoft Teams for {selected_week.strftime('%m/%d/%Y')} - {week_end.strftime('%m/%d/%Y')}"
-
+        logger.info("Publish successful for week %s", selected_week)
         return jsonify({"success": True, "message": message})
 
     except Exception as e:
+        logger.exception("Publish to Teams failed for week %s", selected_week)
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
 
@@ -596,6 +618,7 @@ def reset_teams_schedule():
     sunday = monday + timedelta(days=6)
     
     try:
+        logger.info("Resetting Teams schedule for week %s", monday)
         total_deleted = 0
         total_deleted_open = 0
         failed = 0
@@ -627,6 +650,9 @@ def reset_teams_schedule():
         message = f"🧹 Reset complete for week of {monday.strftime('%m/%d/%Y')}: {total_deleted} assigned shifts deleted, {total_deleted_open} open shifts deleted"
         if failed > 0 or failed_open > 0:
             message += f" (⚠️ {failed + failed_open} shifts could not be deleted after 3 attempts)"
+            logger.warning("Reset for week %s completed with %d failures", monday, failed + failed_open)
+        else:
+            logger.info("Reset successful for week %s: %d assigned + %d open shifts deleted", monday, total_deleted, total_deleted_open)
         
         return jsonify({
             "success": True, 
@@ -637,6 +663,7 @@ def reset_teams_schedule():
             "failed_open": failed_open
         })
     except Exception as e:
+        logger.exception("Reset Teams schedule failed for week %s", monday)
         return jsonify({"success": False, "message": f"Error: {str(e)}"}), 500
 
 # List all previously saved schedule weeks

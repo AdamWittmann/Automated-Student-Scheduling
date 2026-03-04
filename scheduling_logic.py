@@ -4,7 +4,10 @@
 import pandas as pd
 import io
 import re
+import logging
 from ortools.sat.python import cp_model
+
+logger = logging.getLogger(__name__)
 
 # DEPLOYMENT: adjust shift times, days, and required staff counts to match the new site's needs
 # Format: (Day abbreviation, Start hour as float, End hour as float, Required staff count)
@@ -176,7 +179,13 @@ def run_schedule_optimization(students, availability_matrix, student_max_hours=N
     solver.parameters.max_time_in_seconds = 10.0
     status = solver.Solve(model)
 
-    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+    status_name = solver.StatusName(status)
+    if status == cp_model.OPTIMAL:
+        logger.info("Phase 1 solver: OPTIMAL solution found")
+    elif status == cp_model.FEASIBLE:
+        logger.warning("Phase 1 solver: FEASIBLE (not optimal) — hit time limit")
+    else:
+        logger.error("Phase 1 solver: infeasible or unknown status (%s) for %d students", status_name, len(students))
         return None, None, None
 
     best_coverage = solver.Value(coverage_sum)
@@ -203,7 +212,11 @@ def run_schedule_optimization(students, availability_matrix, student_max_hours=N
         model.Minimize(fairness_term)
 
         # Re-solve for fairness
-        solver.Solve(model)
+        phase2_status = solver.Solve(model)
+        if phase2_status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+            logger.info("Phase 2 solver: fairness optimization complete")
+        else:
+            logger.warning("Phase 2 solver: could not improve fairness (status: %s)", solver.StatusName(phase2_status))
 
     # --- Extract Results ---
     schedule = {}
@@ -254,5 +267,12 @@ def run_schedule_optimization(students, availability_matrix, student_max_hours=N
         'shift_keys': shift_keys,
         'assignments': visual_assignments
     }
+
+    unstaffed = [k for k, v in schedule.items() if v['assigned_students'] == 'UNSTAFFED']
+    total_hours_summary = {s: round(h, 2) for s, h in final_student_hours.items()}
+    logger.info("Optimization complete: %d shifts, %d unstaffed, hours per student: %s",
+                len(display_schedule), len(unstaffed), total_hours_summary)
+    if unstaffed:
+        logger.warning("Unstaffed shifts: %s", unstaffed)
 
     return display_schedule, final_student_hours, visual_grid_data
