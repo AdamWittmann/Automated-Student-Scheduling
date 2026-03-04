@@ -1,7 +1,7 @@
 # app.py — Main Flask application: authentication, routing, schedule generation, and Teams integration
 
+from flask import Flask, render_template, request, redirect, jsonify, session, make_response
 from schedule_log import save_schedule_log, load_schedule_log, list_saved_schedules
-from flask import Flask, render_template, request, redirect, jsonify, session
 from scheduling_logic import create_availability_matrix, run_schedule_optimization
 from graph_scheduler import regenerate_weekly_schedule, delete_shifts_for_week, get_upcoming_monday
 from graph_auth import get_graph_token
@@ -9,6 +9,8 @@ from datetime import timedelta, date
 from dotenv import load_dotenv
 import pandas as pd
 import os
+import io
+import csv
 import requests
 from msal import ConfidentialClientApplication
 from functools import wraps
@@ -343,6 +345,9 @@ def upload_file():
             schedule, student_hours, visual_grid_data = run_schedule_optimization(
                 students, availability_matrix, student_max_hours=student_max_hours
             )
+            for item in schedule:
+                item['shift'] = format_shift_time(item['shift'])
+
 
             if schedule is None:
                 return render_template(
@@ -358,6 +363,7 @@ def upload_file():
 
             # Save schedule to log immediately so it can be loaded by publish/reset
             save_schedule_log(schedule, selected_week_start)
+            
 
             return render_template(
                 'schedule.html',
@@ -388,6 +394,39 @@ def upload_file():
         default_week=get_upcoming_monday(),
         submission_counts=get_submission_counts()
     )
+
+# Download generated schedule as csv (In case the GraphAPI goes down :)
+@app.route('/download-schedule')
+@require_owner
+def download_schedule():
+    week_start_str = session.get('selected_week_start')
+    if not week_start_str:
+        return jsonify({"success": False, "message": "No schedule in session"}), 400
+
+    selected_week = date.fromisoformat(week_start_str)
+    schedule = load_schedule_log(selected_week)
+
+    if not schedule:
+        return jsonify({"success": False, "message": "No schedule found"}), 400
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['required', 'assigned_count', 'assigned_students', 'shift'])
+    for item in schedule:
+        writer.writerow([
+            item['required'],
+            item['assigned_count'],
+            item['assigned_students'],
+            format_shift_time(item['shift'])
+        ])
+
+    output.seek(0)
+    filename = f"schedule_{week_start_str}.csv"
+    response = make_response(output.getvalue())
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    response.headers['Content-Type'] = 'text/csv'
+    return response
+
 
 # Render the shift-selection grid where students mark their weekly availability
 @app.route('/availability')
@@ -626,6 +665,20 @@ def view_past_schedule(week_date):
         selected_week=week_monday,
         selected_week_end=week_monday + timedelta(days=6)
     )
+    
+
+# Helper Method to format time
+def format_shift_time(shift_key):
+    # "Mon 7.25-9.00" → "Mon 7:15-9:00"
+    parts = shift_key.split(' ')
+    day = parts[0]
+    times = parts[1].split('-')
+    def float_to_hhmm(f):
+        f = float(f)
+        h = int(f)
+        m = int(round((f - h) * 60))
+        return f"{h}:{m:02d}"
+    return f"{day} {float_to_hhmm(times[0])}-{float_to_hhmm(times[1])}"
 
 if __name__ == '__main__':
     app.run(debug=True)

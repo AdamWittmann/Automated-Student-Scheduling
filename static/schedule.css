@@ -163,7 +163,7 @@ h2 {
     font-size: 0.9rem;
 }
 
-.primary-btn, .danger-btn {
+.primary-btn, .danger-btn{
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -181,6 +181,16 @@ h2 {
     min-width: 50px;
     height: 38px;
     box-sizing: border-box;
+}
+.primary-btn:hover, .danger-btn:hover {
+    background-color: var(--accent-hover, color-mix(in srgb, var(--accent) 85%, black));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.primary-btn:active, .danger-btn:active, .secondary-btn:active {
+    transform: translateY(0px);
+    box-shadow: none;
 }
 
 /* Tabs */
