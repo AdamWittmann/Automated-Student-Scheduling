@@ -1,7 +1,7 @@
 # app.py — Main Flask application: authentication, routing, schedule generation, and Teams integration
 
+from flask import Flask, render_template, request, redirect, jsonify, session, make_response
 from schedule_log import save_schedule_log, load_schedule_log, list_saved_schedules
-from flask import Flask, render_template, request, redirect, jsonify, session
 from scheduling_logic import create_availability_matrix, run_schedule_optimization
 from graph_scheduler import regenerate_weekly_schedule, delete_shifts_for_week, get_upcoming_monday
 from graph_auth import get_graph_token
@@ -9,6 +9,8 @@ from datetime import timedelta, date
 from dotenv import load_dotenv
 import pandas as pd
 import os
+import io
+import csv
 import requests
 from msal import ConfidentialClientApplication
 from functools import wraps
@@ -358,6 +360,7 @@ def upload_file():
 
             # Save schedule to log immediately so it can be loaded by publish/reset
             save_schedule_log(schedule, selected_week_start)
+            
 
             return render_template(
                 'schedule.html',
