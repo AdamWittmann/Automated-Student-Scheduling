@@ -478,12 +478,9 @@ def submit_availability():
     week_start = data.get('week_start')
     max_hours = data.get('max_hours', 20)
     shifts = data.get('shifts', [])
-    cwid = data.get('cwid', '').strip()
 
     if not shifts:
         return jsonify({"success": False, "message": "No shifts selected"}), 400
-    if not cwid:
-        return jsonify({"success": False, "message": "CWID is required"}), 400
     if not week_start:
         return jsonify({"success": False, "message": "Week not selected"}), 400
 
@@ -532,7 +529,7 @@ def submit_availability():
     csv_path = csv_dir / f"availability_{week_start}.csv"
 
     # Column headers
-    fieldnames = ['CWID', 'Student Name', 'Email', 'Max Hours',
+    fieldnames = [ 'Student Name', 'Email', 'Max Hours',
                   'Monday', 'Tuesday', 'Wednesday', 'Thursday',
                   'Friday', 'Saturday', 'Sunday']
 
@@ -542,7 +539,6 @@ def submit_availability():
     }
 
     row = {
-        'CWID': cwid,
         'Student Name': student_name,
         'Email': email,
         'Max Hours': max_hours,
@@ -551,12 +547,12 @@ def submit_availability():
         ranges = day_shifts[day_abbr]
         row[col_name] = json.dumps(ranges) if ranges else json.dumps([])
 
-    # Read existing rows, replace if same CWID + same week, else append
+    # Read existing rows, replace if same email + same week, else append
     existing_rows = []
     if csv_path.exists():
         with open(csv_path, 'r', newline='') as f:
             reader = csv.DictReader(f)
-            existing_rows = [r for r in reader if r.get('CWID') != cwid]
+            existing_rows = [r for r in reader if r.get('Email') != email]
 
     existing_rows.append(row)
 

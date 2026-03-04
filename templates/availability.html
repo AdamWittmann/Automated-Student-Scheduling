@@ -432,14 +432,6 @@
         <div class="user-name">👤 {{ user_name }}</div>
     </div>
 
-    <!-- Student Info -->
-    <div class="settings-card">
-        <label for="cwid">🪪 Your CWID</label>
-        <p class="hint">Enter your CWID so your submission can be matched to your record.</p>
-        <input type="text" id="cwid" class="max-hours-select" placeholder="CWID (e.g. 20012345)" required
-               style="max-width: 220px;" pattern="[0-9]+" inputmode="numeric">
-    </div>
-
     <!-- Week Selector -->
     <div class="settings-card">
         <label for="week_start">📅 Select Week to Submit For:</label>
@@ -793,17 +785,6 @@
         const cwid = document.getElementById('cwid').value.trim();
         const shifts = Array.from(selected);
 
-        // Validation
-        if (!cwid) {
-            alert('Please enter your CWID.');
-            document.getElementById('cwid').focus();
-            return;
-        }
-        if (!/^\d+$/.test(cwid)) {
-            alert('CWID should contain only numbers.');
-            document.getElementById('cwid').focus();
-            return;
-        }
         if (shifts.length === 0) {
             alert('Please select at least one shift.');
             return;
@@ -819,7 +800,6 @@
             body: JSON.stringify({
                 max_hours: parseInt(maxHours),
                 week_start: weekStart,
-                cwid: cwid,
                 shifts: shifts
             })
         })
