@@ -149,10 +149,22 @@ def delete_shifts_for_week(team_id, token, week_start, week_end):
     
     logger.info("Assigned shift delete complete: %d deleted, %d failed", deleted_count, failed_count)
     return deleted_count, failed_count
+
+
 # Convert a shift string like "Mon 7.25-9.0" into timezone-aware ISO start/end datetimes
 def build_shift_datetimes(shift_str, week_monday):
     day, time_range = shift_str.split(" ")
-    start_f, end_f = map(float, time_range.split("-"))
+    start_str, end_str = time_range.split("-")
+
+    def parse_time(t):
+        # Handles both "7.25" (float) and "7:15" (HH:MM) formats
+        if ':' in t:
+            h, m = t.split(':')
+            return int(h) + int(m) / 60.0
+        return float(t)
+
+    start_f = parse_time(start_str)
+    end_f = parse_time(end_str)
 
     shift_date = week_monday + timedelta(days=DAY_MAP[day])
 
@@ -194,7 +206,7 @@ def create_shift(team_id, token, user_id, start_dt, end_dt):
         json=payload
     )
     resp.raise_for_status()
-
+    
 # Create an open (unassigned) shift that any team member can claim; used for understaffed slots
 def create_open_shift(team_id, token, start_dt, end_dt, slot_count=1, notes=""):
     payload = {

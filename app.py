@@ -704,4 +704,4 @@ def format_shift_time(shift_key):
     return f"{day} {float_to_hhmm(times[0])}-{float_to_hhmm(times[1])}"
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', debug=True)

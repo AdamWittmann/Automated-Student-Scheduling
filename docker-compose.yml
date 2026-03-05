@@ -1,0 +1,10 @@
+services:
+  python:
+    build: .
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./availability_submissions:/app/availability_submissions
+      - ./schedule_logs:/app/schedule_logs
