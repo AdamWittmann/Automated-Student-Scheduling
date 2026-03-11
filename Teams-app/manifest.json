@@ -2,7 +2,7 @@
   "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.24/MicrosoftTeams.schema.json",
   "manifestVersion": "1.24",
   "id": "e8700504-4092-4e9b-8af9-848c09615611",
-  "version": "1.0.1",
+  "version": "1.0.2",
 
   "developer": {
   "name": "Adam Wittmann",
@@ -24,12 +24,11 @@
     "outline": "outline.png"
   },
   "accentColor": "#FFFFFF",
-  "_DEPLOYMENT_NOTE_validDomains": "Replace ngrok domain with the production hostname",
   "validDomains": [
     "your-ngrok-domain.ngrok.io",
-    "teams.microsoft.com"
+    "teams.microsoft.com",
+    "teams.cloud.microsoft"
   ],
-  "_DEPLOYMENT_NOTE_staticTabs": "Update contentUrl and websiteUrl to the production domain",
   "staticTabs": [
     {
       "entityId": "tab1",
