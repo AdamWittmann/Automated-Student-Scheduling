@@ -1,6 +1,7 @@
 # app.py — Main Flask application: authentication, routing, schedule generation, and Teams integration
 
 from flask import Flask, render_template, request, redirect, jsonify, session, make_response
+from flask_wtf.csrf import CSRFProtect
 from schedule_log import save_schedule_log, load_schedule_log, list_saved_schedules
 from scheduling_logic import create_availability_matrix, run_schedule_optimization
 from graph_scheduler import regenerate_weekly_schedule, delete_shifts_for_week, get_upcoming_monday
@@ -15,6 +16,8 @@ import requests
 from msal import ConfidentialClientApplication
 from functools import wraps
 import logging
+
+csrf = CSRFProtect(app)
 
 logging.basicConfig(
     level=logging.INFO,
